@@ -6,7 +6,12 @@
       <header class="top">
         <div class="bar">
           <button class="icon" (click)="leaveGame()" aria-label="Leave game">←</button>
-          <div class="code">{{ state.code }}</div>
+          <div class="right">
+            <button class="icon" (click)="sound.toggle()" [attr.aria-label]="sound.muted ? 'Unmute sound' : 'Mute sound'">
+              {{ sound.muted ? '🔇' : '🔊' }}
+            </button>
+            <div class="code">{{ state.code }}</div>
+          </div>
         </div>
         <div class="chips" [style.--n]="state.players.length">
           @for (p of state.players; track p.id; let i = $index) {

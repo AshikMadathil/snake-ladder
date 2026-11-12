@@ -1,6 +1,7 @@
 import { Component, effect } from '@angular/core';
 import { Router } from '@angular/router';
 import { GameService } from '../../services/game.service';
+import { SoundService } from '../../services/sound.service';
 import { BoardComponent, colorOf } from '../../components/board/board.component';
 import { DiceComponent } from '../../components/dice/dice.component';
 import { LobbyComponent } from '../../components/lobby/lobby.component';
@@ -17,13 +18,27 @@ export class RoomComponent {
   rolling = false;
   private face = 1;
   private wasMyTurn = false;
+  private seenRoll = '';
 
-  constructor(public game: GameService, private router: Router) {
-    // buzz the phone when it becomes your turn
+  constructor(public game: GameService, public sound: SoundService, private router: Router) {
+    // buzz the phone and chime when it becomes your turn
     effect(() => {
       const mine = this.isMyTurn;
-      if (mine && !this.wasMyTurn) this.buzz(180);
+      if (mine && !this.wasMyTurn) {
+        this.buzz(180);
+        setTimeout(() => { if (this.isMyTurn) this.sound.turn(); }, 1300); // after the tokens finish moving
+      }
       this.wasMyTurn = mine;
+    });
+
+    // someone else rolled: play the dice landing
+    effect(() => {
+      const r = this.game.state()?.lastRoll;
+      if (!r) { this.seenRoll = ''; return; }
+      const key = `${r.playerId}-${r.roll}-${r.from}-${r.to}`;
+      if (key === this.seenRoll) return;
+      this.seenRoll = key;
+      if (r.playerId !== this.game.myId()) this.sound.diceLand();
     });
   }
 
@@ -78,6 +93,7 @@ export class RoomComponent {
     if (!this.isMyTurn || this.rolling) return;
     this.rolling = true;
     this.buzz(25);
+    this.sound.diceRoll(800);
     const timer = setInterval(() => (this.face = 1 + Math.floor(Math.random() * 6)), 90);
     setTimeout(() => {
       clearInterval(timer);

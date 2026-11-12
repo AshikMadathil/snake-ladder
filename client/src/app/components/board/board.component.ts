@@ -1,4 +1,5 @@
 import { Component, Input, OnChanges, OnDestroy, SimpleChanges } from '@angular/core';
+import { SoundService } from '../../services/sound.service';
 
 type Pt = { x: number; y: number };
 type Jump = { from: number; to: number };
@@ -115,6 +116,8 @@ export class BoardComponent implements OnChanges, OnDestroy {
   private version = new Map<string, number>();
   private destroyed = false;
 
+  constructor(private sound: SoundService) {}
+
   ngOnChanges(ch: SimpleChanges) {
     if (!ch['players']) return;
     const ids = new Set(this.players.map((p) => p.id));
@@ -142,6 +145,7 @@ export class BoardComponent implements OnChanges, OnDestroy {
     if (end > from && end - from <= 6) {
       for (let s = from + 1; s <= end; s++) {
         this.shown.set(id, s);
+        this.sound.step(s - from - 1); // pitch rises with every counted square
         await sleep(210);
         if (!alive()) return;
       }
@@ -154,6 +158,7 @@ export class BoardComponent implements OnChanges, OnDestroy {
       await sleep(150);
       if (!alive()) return;
       this.sliding.add(id);
+      if (jump.from > jump.to) this.sound.snake(); else this.sound.ladder();
       this.shown.set(id, to);
       setTimeout(() => this.sliding.delete(id), 900);
     }
