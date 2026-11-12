@@ -3,11 +3,13 @@
 
   <label>Your name</label>
   <input #nameInput placeholder="Your name" maxlength="12" />
+
   <button (click)="create(nameInput.value)">Create Room</button>
   <hr />
 
   <label>Room code</label>
-  <input #codeInput placeholder="e.g. AB12CD" maxlength="6" autocapitalize="characters" autocomplete="off" />
+  <input #codeInput placeholder="e.g. AB12CD" maxlength="6"
+         autocapitalize="characters" autocomplete="off" />
   <button (click)="join(nameInput.value, codeInput.value)">Join Room</button>
 
   <p class="error">{{ error }}</p>
