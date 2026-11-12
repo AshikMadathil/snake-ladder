@@ -2,14 +2,14 @@
   <div class="board">
     <div class="grid">
       @for (c of cells; track c.n) {
-        <div class="cell" [class.alt]="c.alt" [class.goal]="c.n === 100">
+        <div class="cell" [class.alt]="c.alt" [class.up]="c.up" [class.down]="c.down" [class.goal]="c.n === 100">
           <span>{{ c.n }}</span>
           @if (c.n === 100) { <b class="crown">👑</b> }
         </div>
       }
     </div>
 
-    <svg class="overlay" viewBox="0 0 100 100" aria-hidden="true">
+    <svg class="layer" viewBox="0 0 100 100" aria-hidden="true">
       @for (l of ladders; track $index) {
         <g class="ladder">
           <line [attr.x1]="l.r1.x1" [attr.y1]="l.r1.y1" [attr.x2]="l.r1.x2" [attr.y2]="l.r1.y2" />
@@ -36,11 +36,11 @@
     </svg>
 
     @for (t of tokens; track t.id) {
-      <div class="token" [class.active]="t.active"
+      <div class="token" [class.active]="t.active" [class.slide]="t.slide"
            [style.left.%]="t.x" [style.top.%]="t.y"
            [style.background]="t.bg" [style.color]="t.fg">{{ t.initial }}</div>
     }
 
-    <div class="start-lane">START</div>
+    <div class="start-lane">START ▸</div>
   </div>
 </div>

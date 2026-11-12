@@ -1,0 +1,3 @@
+<div class="dice" [class.rolling]="rolling" [class.one]="face === 1">
+  @for (on of pips; track $index) { <i [class.on]="on"></i> }
+</div>

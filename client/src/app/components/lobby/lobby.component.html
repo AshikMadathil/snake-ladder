@@ -1,0 +1,43 @@
+<div class="lobby">
+  <div class="head">
+    <button class="icon" (click)="leave.emit()" aria-label="Leave">←</button>
+    <h2>Waiting room</h2>
+  </div>
+
+  <div class="card panel">
+    <p class="muted">Room code</p>
+    <div class="digits" (click)="copy()">
+      @for (ch of letters; track $index) { <span>{{ ch }}</span> }
+    </div>
+
+    <div class="invite">
+      <button class="btn secondary" (click)="share()">📤 Share invite</button>
+      <button class="btn ghost" (click)="copy()">{{ copied ? '✔ Copied' : '⧉ Copy' }}</button>
+    </div>
+  </div>
+
+  <ul class="list">
+    @for (i of [0, 1, 2, 3]; track i) {
+      @if (state.players[i]; as p) {
+        <li class="filled">
+          <span class="av" [style.background]="col(p).bg" [style.color]="col(p).fg">{{ p.name.charAt(0).toUpperCase() }}</span>
+          <b>{{ p.name }}</b>
+          @if (p.id === state.hostId) { <em>Host</em> }
+          @if (p.id === myId) { <small>You</small> }
+        </li>
+      } @else {
+        <li class="empty"><span class="av"></span> Waiting for player…</li>
+      }
+    }
+  </ul>
+
+  <div class="foot">
+    @if (isHost) {
+      <button class="btn primary" [disabled]="state.players.length < 2" (click)="start.emit()">
+        {{ state.players.length < 2 ? 'Need at least 2 players' : 'Start Game 🚀' }}
+      </button>
+    } @else {
+      <p class="muted">Waiting for the host to start…</p>
+    }
+  </div>
+</div>

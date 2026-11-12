@@ -1,105 +1,54 @@
 @if (state) {
-  <div class="room">
-    <header class="topbar">
-      <button class="ghost" (click)="goHome()">← Leave</button>
-      <div class="code-chip" (click)="copyCode()" title="Copy room code">
-        <small>ROOM</small>
-        <b>{{ state.code }}</b>
-        <span>{{ copied ? '✔ Copied' : '⧉ Copy' }}</span>
-      </div>
-    </header>
-
-    @if (state.status === 'lobby') {
-      <section class="card lobby">
-        <h2>Waiting for players</h2>
-        <p class="muted">Share the room code <b>{{ state.code }}</b> with your friends.</p>
-
-        <div class="slots">
-          @for (i of [0, 1, 2, 3]; track i) {
-            @if (state.players[i]; as p) {
-              <div class="slot filled">
-                <span class="dot" [style.background]="colorOf(p)"></span>
-                {{ p.name }}
-                @if (p.id === game.myId()) { <small>(you)</small> }
+  @if (state.status === 'lobby') {
+    <app-lobby [state]="state" [myId]="game.myId()" (start)="game.start()" (leave)="goHome()" />
+  } @else {
+    <div class="screen">
+      <header class="top">
+        <div class="bar">
+          <button class="icon" (click)="leaveGame()" aria-label="Leave game">←</button>
+          <div class="code">{{ state.code }}</div>
+        </div>
+        <div class="chips" [style.--n]="state.players.length">
+          @for (p of state.players; track p.id; let i = $index) {
+            <div class="chip" [class.on]="state.status === 'playing' && i === state.turnIndex">
+              <div class="av" [style.background]="col(p).bg" [style.color]="col(p).fg">
+                {{ p.name.charAt(0).toUpperCase() }}<em>{{ p.pos }}</em>
               </div>
-            } @else {
-              <div class="slot">Waiting…</div>
-            }
+              <span>{{ p.id === game.myId() ? 'You' : p.name }}</span>
+            </div>
           }
         </div>
+        <div class="banner" [class.mine]="isMyTurn">{{ banner }}</div>
+      </header>
 
-        @if (isHost) {
-          <button class="btn primary" [disabled]="state.players.length < 2" (click)="game.start()">
-            {{ state.players.length < 2 ? 'Need at least 2 players' : 'Start Game 🚀' }}
-          </button>
-        } @else {
-          <p class="muted">Waiting for the host to start the game…</p>
-        }
+      <section class="slot">
+        <app-board [players]="state.players" [activeId]="activeId" [lastRoll]="state.lastRoll" />
       </section>
-    } @else {
-      <div class="game">
-        <div class="card turn" [class.mine]="isMyTurn">
-          @if (state.status === 'playing') {
-            {{ isMyTurn ? '🎯 Your turn!' : activePlayer?.name + "'s turn" }}
-          } @else {
-            Game over
+
+      <footer class="dock">
+        <p class="log">{{ lastMessage }}</p>
+        <div class="row">
+          @for (k of rollKey; track k) {
+            <app-dice [face]="diceFace" [rolling]="rolling" />
           }
+          <button class="btn primary roll" [class.go]="isMyTurn && !rolling"
+                  [disabled]="!isMyTurn || rolling || state.status !== 'playing'" (click)="roll()">
+            {{ rollLabel }}
+          </button>
         </div>
-
-        <div class="board-col">
-          <app-board [players]="state.players" [activeId]="activeId" />
-        </div>
-
-        <aside class="side">
-          <div class="card dice-card">
-            @for (k of rollKey; track k) {
-              <div class="dice" [class.rolling]="rolling">
-                @for (on of pips; track $index) { <i [class.on]="on"></i> }
-              </div>
-            }
-            <button class="btn primary" [disabled]="!isMyTurn || rolling || state.status !== 'playing'" (click)="roll()">
-              {{ rolling ? 'Rolling…' : (isMyTurn ? 'Roll Dice 🎲' : 'Wait for your turn') }}
-            </button>
-          </div>
-
-          <div class="card log">{{ lastMessage }}</div>
-
-          <div class="card">
-            <ul class="plist">
-              @for (p of state.players; track p.id; let i = $index) {
-                <li [class.active]="state.status === 'playing' && i === state.turnIndex">
-                  <span class="dot" [style.background]="colorOf(p)"></span>
-                  <span class="pname">{{ p.name }} @if (p.id === game.myId()) { <small>(you)</small> }</span>
-                  <b>{{ p.pos }}</b>
-                  <div class="bar"><i [style.width.%]="p.pos"></i></div>
-                </li>
-              }
-            </ul>
-          </div>
-        </aside>
-      </div>
-    }
+      </footer>
+    </div>
 
     @if (state.status === 'finished') {
-      <div class="overlay">
-        @for (c of confetti; track $index) {
-          <i class="confetti" [style.left.%]="c.left" [style.animation-delay.s]="c.delay" [style.background]="c.color"></i>
-        }
-        <div class="winner">
-          <div class="trophy">🏆</div>
-          <h2>{{ winnerName }} wins!</h2>
-          <p>{{ state.winnerId === game.myId() ? 'Congratulations! 🎉' : 'Better luck next time!' }}</p>
-          <button class="btn primary" (click)="goHome()">Back to Home</button>
-        </div>
-      </div>
+      <app-winner [name]="winnerName" [isMe]="state.winnerId === game.myId()" (home)="goHome()" />
     }
-  </div>
+  }
 } @else {
-  <div class="room">
-    <section class="card lobby">
+  <div class="empty">
+    <div class="card">
       <h2>Not connected to a room</h2>
-      <p class="muted">Create a room or join one with a code.</p>
+      <p>Create a room or join one with a code.</p>
       <button class="btn primary" (click)="goHome()">Go Home</button>
-    </section>
+    </div>
   </div>
 }

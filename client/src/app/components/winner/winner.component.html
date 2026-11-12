@@ -1,0 +1,11 @@
+<div class="overlay">
+  @for (c of confetti; track $index) {
+    <i class="confetti" [style.left.%]="c.left" [style.animation-delay.s]="c.delay" [style.background]="c.color"></i>
+  }
+  <div class="winner">
+    <div class="trophy">🏆</div>
+    <h2>{{ isMe ? 'You win!' : name + ' wins!' }}</h2>
+    <p>{{ isMe ? 'Congratulations! 🎉' : 'Better luck next time!' }}</p>
+    <button class="btn primary" (click)="home.emit()">Back to Home</button>
+  </div>
+</div>

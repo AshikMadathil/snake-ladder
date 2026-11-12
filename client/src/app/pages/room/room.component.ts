@@ -1,40 +1,33 @@
-import { Component } from '@angular/core';
+import { Component, effect } from '@angular/core';
 import { Router } from '@angular/router';
 import { GameService } from '../../services/game.service';
-import { BoardComponent, COLOR_MAP } from '../../components/board/board.component';
-
-const CONFETTI_COLORS = ['#ff4d4f', '#3b82f6', '#22c55e', '#facc15', '#ff9f43', '#e84393'];
-const PIPS: Record<number, number[]> = {
-  1: [4],
-  2: [0, 8],
-  3: [0, 4, 8],
-  4: [0, 2, 6, 8],
-  5: [0, 2, 4, 6, 8],
-  6: [0, 2, 3, 5, 6, 8],
-};
+import { BoardComponent, colorOf } from '../../components/board/board.component';
+import { DiceComponent } from '../../components/dice/dice.component';
+import { LobbyComponent } from '../../components/lobby/lobby.component';
+import { WinnerComponent } from '../../components/winner/winner.component';
 
 @Component({
   selector: 'app-room',
   standalone: true,
-  imports: [BoardComponent],
+  imports: [BoardComponent, DiceComponent, LobbyComponent, WinnerComponent],
   templateUrl: './room.component.html',
   styleUrl: './room.component.scss',
 })
 export class RoomComponent {
   rolling = false;
-  copied = false;
   private face = 1;
+  private wasMyTurn = false;
 
-  readonly confetti = Array.from({ length: 28 }, (_, i) => ({
-    left: (i * 37) % 100,
-    delay: ((i * 13) % 10) / 10,
-    color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
-  }));
-
-  constructor(public game: GameService, private router: Router) {}
+  constructor(public game: GameService, private router: Router) {
+    // buzz the phone when it becomes your turn
+    effect(() => {
+      const mine = this.isMyTurn;
+      if (mine && !this.wasMyTurn) this.buzz(180);
+      this.wasMyTurn = mine;
+    });
+  }
 
   get state() { return this.game.state(); }
-  get isHost() { return this.state?.hostId === this.game.myId(); }
   get activePlayer() { return this.state?.players?.[this.state.turnIndex]; }
   get activeId(): string { return this.state?.status === 'playing' ? (this.activePlayer?.id ?? '') : ''; }
   get isMyTurn() {
@@ -45,15 +38,19 @@ export class RoomComponent {
     return this.state?.players?.find((p: any) => p.id === this.state.winnerId)?.name ?? 'Someone';
   }
 
-  /** Changes whenever a new roll arrives, so the dice element is re-created and plays its pop animation. */
+  /** Changes with every new roll, so the dice is re-created and plays its pop animation for everybody. */
   get rollKey() { return [this.state?.lastRoll ?? 0]; }
+  get diceFace(): number { return this.rolling ? this.face : (this.state?.lastRoll?.roll ?? this.face); }
 
-  get diceFace(): number {
-    return this.rolling ? this.face : (this.state?.lastRoll?.roll ?? this.face);
+  get banner(): string {
+    if (this.state?.status !== 'playing') return 'Game over';
+    return this.isMyTurn ? '🎯 Your turn!' : `${this.activePlayer?.name ?? 'Player'}'s turn`;
   }
-  get pips(): boolean[] {
-    const on = PIPS[this.diceFace] ?? [];
-    return Array.from({ length: 9 }, (_, i) => on.includes(i));
+
+  get rollLabel(): string {
+    if (this.rolling) return 'Rolling…';
+    if (this.isMyTurn) return 'Roll Dice 🎲';
+    return `${this.activePlayer?.name ?? 'Player'} is playing…`;
   }
 
   get lastMessage(): string {
@@ -75,11 +72,12 @@ export class RoomComponent {
     return msg;
   }
 
-  colorOf(p: any): string { return COLOR_MAP[p?.color]?.bg ?? p?.color ?? '#999'; }
+  col(p: any) { return colorOf(p.color); }
 
   roll() {
     if (!this.isMyTurn || this.rolling) return;
     this.rolling = true;
+    this.buzz(25);
     const timer = setInterval(() => (this.face = 1 + Math.floor(Math.random() * 6)), 90);
     setTimeout(() => {
       clearInterval(timer);
@@ -88,14 +86,13 @@ export class RoomComponent {
     }, 800);
   }
 
-  async copyCode() {
-    try {
-      await navigator.clipboard.writeText(this.state.code);
-      this.copied = true;
-      setTimeout(() => (this.copied = false), 1500);
-    } catch {
-      /* clipboard may be blocked; ignore */
-    }
+  private buzz(ms: number) {
+    try { if (typeof navigator !== 'undefined') navigator.vibrate?.(ms); } catch { /* not supported */ }
+  }
+
+  leaveGame() {
+    if (this.state?.status === 'playing' && !confirm('Leave this game?')) return;
+    this.goHome();
   }
 
   goHome() { this.router.navigate(['/']); }

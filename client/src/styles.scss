@@ -1,1 +1,85 @@
-/* You can add global styles to this file, and also import other style files */
+:root {
+  --bg1: #1b1464;
+  --bg2: #3a1c71;
+  --card: rgba(255, 255, 255, 0.1);
+  --card-border: rgba(255, 255, 255, 0.18);
+  --muted: rgba(255, 255, 255, 0.72);
+  --accent: #ffc83d;
+  --good: #2ecc71;
+}
+
+* { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+html, body { margin: 0; min-height: 100%; }
+
+body {
+  min-height: 100vh;
+  min-height: 100dvh;
+  font-family: 'Fredoka', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  color: #fff;
+  background:
+    radial-gradient(circle at 15% 10%, #5b2a9e 0%, transparent 45%),
+    radial-gradient(circle at 85% 90%, #0f8b8d 0%, transparent 42%),
+    linear-gradient(160deg, var(--bg1), var(--bg2));
+  background-attachment: fixed;
+  overscroll-behavior: none;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+input { -webkit-user-select: text; user-select: text; }
+button, input { font-family: inherit; }
+button { cursor: pointer; }
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: 20px;
+  padding: 14px 16px;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+}
+
+.btn {
+  width: 100%;
+  min-height: 54px;
+  padding: 12px 14px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  border: 0;
+  border-radius: 16px;
+  color: #fff;
+  transition: transform 0.1s, opacity 0.2s;
+
+  &:active:not(:disabled) { transform: scale(0.97); }
+  &:disabled { opacity: 0.55; cursor: not-allowed; }
+}
+
+.btn.primary {
+  background: linear-gradient(135deg, #ff9f43, #ff5e62);
+  box-shadow: 0 6px 18px rgba(255, 94, 98, 0.4);
+}
+
+.btn.secondary {
+  background: linear-gradient(135deg, #36d1dc, #5b86e5);
+  box-shadow: 0 6px 18px rgba(54, 209, 220, 0.35);
+}
+
+.btn.ghost {
+  background: var(--card);
+  border: 1px solid var(--card-border);
+}
+
+.icon {
+  width: 42px;
+  height: 42px;
+  flex: none;
+  border-radius: 13px;
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  color: #fff;
+  font-size: 1.2rem;
+}

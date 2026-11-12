@@ -1,0 +1,44 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  overflow: hidden;
+  background: rgba(10, 5, 40, 0.82);
+}
+
+.winner {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: 340px;
+  text-align: center;
+  padding: 26px 22px;
+  border-radius: 26px;
+  background: linear-gradient(160deg, #3a1c71, #1b1464);
+  border: 1px solid var(--card-border);
+  animation: pop 0.5s ease;
+
+  h2 { margin: 6px 0; font-size: 2rem; color: var(--accent); }
+  p { margin: 0 0 18px; color: var(--muted); }
+}
+
+.trophy { font-size: 4.5rem; animation: bounce 1s infinite; }
+
+.confetti {
+  position: absolute;
+  top: -20px;
+  width: 10px;
+  height: 16px;
+  border-radius: 2px;
+  animation: fall 3s linear infinite;
+}
+
+@keyframes pop {
+  0% { transform: scale(0.7); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes bounce { 50% { transform: translateY(-10px); } }
+@keyframes fall { to { transform: translateY(110vh) rotate(720deg); } }

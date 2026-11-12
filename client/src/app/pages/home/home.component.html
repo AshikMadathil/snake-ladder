@@ -3,20 +3,22 @@
     <div class="logo">🐍 <span>Snake &amp; Ladder</span> 🪜</div>
     <p class="tag">Play online with friends. Up to 4 players.</p>
 
+    @if (code) {
+      <p class="invite">🎉 You're invited! Enter your name and tap <b>Join Room</b>.</p>
+    }
+
     <label for="name">Your name</label>
-    <input id="name" #nameInput placeholder="Enter your name" maxlength="12" autocomplete="off" />
+    <input id="name" #nameInput [value]="savedName" placeholder="Enter your name" maxlength="12" autocomplete="off" />
 
-    <button class="btn primary" [disabled]="loading" (click)="create(nameInput.value)">
-      Create Room
-    </button>
+    @if (!code) {
+      <button class="btn primary" [disabled]="loading" (click)="create(nameInput.value)">Create Room</button>
+      <div class="or"><span>or join a friend</span></div>
+    }
 
-    <div class="or"><span>or join a friend</span></div>
-
-    <input #codeInput class="code" placeholder="ROOM CODE" maxlength="6"
+    <input #codeInput class="code" [value]="code" placeholder="ROOM CODE" maxlength="6"
            autocapitalize="characters" autocomplete="off" />
-    <button class="btn secondary" [disabled]="loading" (click)="join(nameInput.value, codeInput.value)">
-      Join Room
-    </button>
+    <button class="btn" [class.primary]="code" [class.secondary]="!code" [disabled]="loading"
+            (click)="join(nameInput.value, codeInput.value)">Join Room</button>
 
     @if (loading) {
       <p class="info">Connecting to server… the first connection can take up to a minute.</p>
