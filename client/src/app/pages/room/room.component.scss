@@ -1,7 +1,68 @@
-.room { max-width: 500px; margin: 0 auto; padding: 16px; }
-.players { list-style: none; padding: 0; }
-.players li { padding: 10px; border-radius: 8px; margin-bottom: 6px; background: #f2f2f2; }
-.players li.active { outline: 3px solid #ff9800; }
-.dot { display: inline-block; width: 14px; height: 14px; border-radius: 50%; margin-right: 8px; }
-button { padding: 14px; font-size: 1.1rem; border-radius: 10px; width: 100%; }
-.roll { min-height: 56px; }
+.room { max-width: 1100px; margin: 0 auto; padding: 12px 14px 32px; }
+.muted { color: var(--muted); }
+.dot { width: 18px; height: 18px; border-radius: 50%; border: 2px solid #fff; flex: none; display: inline-block; }
+
+.topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.ghost { background: var(--card); color: #fff; border: 1px solid var(--card-border); border-radius: 12px; padding: 10px 14px; font-size: 1rem; }
+.code-chip {
+  display: flex; align-items: center; gap: 10px; padding: 8px 14px; border-radius: 14px;
+  background: rgba(0, 0, 0, 0.25); cursor: pointer;
+  small { color: var(--muted); letter-spacing: 0.15em; }
+  b { font-size: 1.3rem; letter-spacing: 0.2em; color: var(--accent); }
+  span { font-size: 0.8rem; color: var(--muted); }
+}
+
+.lobby { max-width: 480px; margin: 6vh auto 0; text-align: center; h2 { margin: 4px 0; } }
+.slots { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 16px 0; }
+.slot {
+  min-height: 56px; padding: 12px 10px; border-radius: 16px; border: 2px dashed var(--card-border);
+  color: var(--muted); display: flex; align-items: center; justify-content: center; gap: 8px;
+  &.filled { border-style: solid; background: rgba(255, 255, 255, 0.12); color: #fff; font-weight: 600; }
+}
+
+.game {
+  display: grid; gap: 14px; align-items: start;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  grid-template-rows: auto 1fr;
+  grid-template-areas: 'board turn' 'board side';
+}
+.board-col { grid-area: board; }
+.side { grid-area: side; display: flex; flex-direction: column; gap: 14px; }
+.turn { grid-area: turn; text-align: center; font-size: 1.2rem; font-weight: 600; &.mine { background: linear-gradient(135deg, #ff9f43, #ff5e62); animation: glow 1.4s infinite; } }
+@keyframes glow { 50% { box-shadow: 0 0 0 6px rgba(255, 159, 67, 0.35); } }
+
+.dice-card { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.dice {
+  width: 84px; height: 84px; padding: 12px; background: #fff; border-radius: 18px;
+  display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.4), inset 0 -4px 0 rgba(0, 0, 0, 0.08);
+  animation: pop 0.35s ease;
+  i { width: 70%; height: 70%; margin: auto; border-radius: 50%; &.on { background: #222; } }
+  &.rolling { animation: shake 0.3s linear infinite; }
+}
+@keyframes pop { 0% { transform: scale(0.6) rotate(-20deg); } 60% { transform: scale(1.12); } 100% { transform: scale(1); } }
+@keyframes shake { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-14deg) translateY(-6px); } 75% { transform: rotate(14deg) translateY(-6px); } }
+
+.log { text-align: center; font-size: 0.95rem; min-height: 48px; }
+
+.plist {
+  list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px;
+  li { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; padding: 8px 10px; border-radius: 12px; background: rgba(255, 255, 255, 0.08); }
+  li.active { outline: 2px solid var(--accent); background: rgba(255, 200, 61, 0.15); }
+  .bar { grid-column: 1 / -1; height: 6px; border-radius: 4px; background: rgba(255, 255, 255, 0.15); overflow: hidden; i { display: block; height: 100%; background: var(--good); transition: width 0.6s; } }
+}
+
+.overlay { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; overflow: hidden; background: rgba(10, 5, 40, 0.8); }
+.winner {
+  position: relative; z-index: 2; text-align: center; padding: 28px 32px; max-width: 90vw; border-radius: 24px;
+  background: linear-gradient(160deg, #3a1c71, #1b1464); border: 1px solid var(--card-border); animation: pop 0.5s ease;
+  h2 { margin: 8px 0; font-size: 2rem; color: var(--accent); }
+  .trophy { font-size: 4.5rem; animation: bounce 1s infinite; }
+}
+@keyframes bounce { 50% { transform: translateY(-10px); } }
+.confetti { position: absolute; top: -20px; width: 10px; height: 16px; border-radius: 2px; animation: fall 3s linear infinite; }
+@keyframes fall { to { transform: translateY(110vh) rotate(720deg); } }
+
+@media (max-width: 860px) {
+  .game { grid-template-columns: 1fr; grid-template-rows: none; grid-template-areas: 'turn' 'board' 'side'; }
+}

@@ -1,16 +1,28 @@
 <div class="home">
-  <h1>🐍 Snake & Ladder 🐍</h1>
+  <div class="card box">
+    <div class="logo">🐍 <span>Snake &amp; Ladder</span> 🪜</div>
+    <p class="tag">Play online with friends. Up to 4 players.</p>
 
-  <label>Your name</label>
-  <input #nameInput placeholder="Your name" maxlength="12" />
+    <label for="name">Your name</label>
+    <input id="name" #nameInput placeholder="Enter your name" maxlength="12" autocomplete="off" />
 
-  <button (click)="create(nameInput.value)">Create Room</button>
-  <hr />
+    <button class="btn primary" [disabled]="loading" (click)="create(nameInput.value)">
+      Create Room
+    </button>
 
-  <label>Room code</label>
-  <input #codeInput placeholder="e.g. AB12CD" maxlength="6"
-         autocapitalize="characters" autocomplete="off" />
-  <button (click)="join(nameInput.value, codeInput.value)">Join Room</button>
+    <div class="or"><span>or join a friend</span></div>
 
-  <p class="error">{{ error }}</p>
+    <input #codeInput class="code" placeholder="ROOM CODE" maxlength="6"
+           autocapitalize="characters" autocomplete="off" />
+    <button class="btn secondary" [disabled]="loading" (click)="join(nameInput.value, codeInput.value)">
+      Join Room
+    </button>
+
+    @if (loading) {
+      <p class="info">Connecting to server… the first connection can take up to a minute.</p>
+    }
+    @if (error) {
+      <p class="error">{{ error }}</p>
+    }
+  </div>
 </div>

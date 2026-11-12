@@ -1,39 +1,105 @@
 @if (state) {
-    <div class="room">
-      <h2>Room: {{ state.code }}</h2>
-  
-      <ul class="players">
-        @for (p of state.players; track p.id; let i = $index) {
-          <li [class.active]="state.status === 'playing' && i === state.turnIndex">
-            <span class="dot" [style.background]="p.color"></span>
-            {{ p.name }} — square {{ p.pos }}
-          </li>
-        }
-      </ul>
-  
-      @if (state.status === 'lobby') {
-        <p>Waiting for players ({{ state.players.length }}/4)</p>
+  <div class="room">
+    <header class="topbar">
+      <button class="ghost" (click)="goHome()">← Leave</button>
+      <div class="code-chip" (click)="copyCode()" title="Copy room code">
+        <small>ROOM</small>
+        <b>{{ state.code }}</b>
+        <span>{{ copied ? '✔ Copied' : '⧉ Copy' }}</span>
+      </div>
+    </header>
+
+    @if (state.status === 'lobby') {
+      <section class="card lobby">
+        <h2>Waiting for players</h2>
+        <p class="muted">Share the room code <b>{{ state.code }}</b> with your friends.</p>
+
+        <div class="slots">
+          @for (i of [0, 1, 2, 3]; track i) {
+            @if (state.players[i]; as p) {
+              <div class="slot filled">
+                <span class="dot" [style.background]="colorOf(p)"></span>
+                {{ p.name }}
+                @if (p.id === game.myId()) { <small>(you)</small> }
+              </div>
+            } @else {
+              <div class="slot">Waiting…</div>
+            }
+          }
+        </div>
+
         @if (isHost) {
-          <button (click)="game.start()" [disabled]="state.players.length < 2">Start Game</button>
+          <button class="btn primary" [disabled]="state.players.length < 2" (click)="game.start()">
+            {{ state.players.length < 2 ? 'Need at least 2 players' : 'Start Game 🚀' }}
+          </button>
+        } @else {
+          <p class="muted">Waiting for the host to start the game…</p>
         }
-      }
-  
-      @if (state.status === 'playing') {
-        @if (state.lastRoll) {
-          <p>Last roll: 🎲 {{ state.lastRoll.roll }}</p>
+      </section>
+    } @else {
+      <div class="game">
+        <div class="card turn" [class.mine]="isMyTurn">
+          @if (state.status === 'playing') {
+            {{ isMyTurn ? '🎯 Your turn!' : activePlayer?.name + "'s turn" }}
+          } @else {
+            Game over
+          }
+        </div>
+
+        <div class="board-col">
+          <app-board [players]="state.players" [activeId]="activeId" />
+        </div>
+
+        <aside class="side">
+          <div class="card dice-card">
+            @for (k of rollKey; track k) {
+              <div class="dice" [class.rolling]="rolling">
+                @for (on of pips; track $index) { <i [class.on]="on"></i> }
+              </div>
+            }
+            <button class="btn primary" [disabled]="!isMyTurn || rolling || state.status !== 'playing'" (click)="roll()">
+              {{ rolling ? 'Rolling…' : (isMyTurn ? 'Roll Dice 🎲' : 'Wait for your turn') }}
+            </button>
+          </div>
+
+          <div class="card log">{{ lastMessage }}</div>
+
+          <div class="card">
+            <ul class="plist">
+              @for (p of state.players; track p.id; let i = $index) {
+                <li [class.active]="state.status === 'playing' && i === state.turnIndex">
+                  <span class="dot" [style.background]="colorOf(p)"></span>
+                  <span class="pname">{{ p.name }} @if (p.id === game.myId()) { <small>(you)</small> }</span>
+                  <b>{{ p.pos }}</b>
+                  <div class="bar"><i [style.width.%]="p.pos"></i></div>
+                </li>
+              }
+            </ul>
+          </div>
+        </aside>
+      </div>
+    }
+
+    @if (state.status === 'finished') {
+      <div class="overlay">
+        @for (c of confetti; track $index) {
+          <i class="confetti" [style.left.%]="c.left" [style.animation-delay.s]="c.delay" [style.background]="c.color"></i>
         }
-        <button class="roll" (click)="game.roll()" [disabled]="!isMyTurn">
-          {{ isMyTurn ? 'Roll Dice 🎲' : "Opponent's turn" }}
-        </button>
-        <!-- Board SVG will go here next -->
-      }
-  
-      @if (state.status === 'finished') {
-        <h2>🏆 Winner!</h2>
-        <button (click)="goHome()">Back to Home</button>
-      }
-    </div>
-  } @else {
-    <p>Not connected to a room.</p>
-    <button (click)="goHome()">Go Home</button>
-  }
+        <div class="winner">
+          <div class="trophy">🏆</div>
+          <h2>{{ winnerName }} wins!</h2>
+          <p>{{ state.winnerId === game.myId() ? 'Congratulations! 🎉' : 'Better luck next time!' }}</p>
+          <button class="btn primary" (click)="goHome()">Back to Home</button>
+        </div>
+      </div>
+    }
+  </div>
+} @else {
+  <div class="room">
+    <section class="card lobby">
+      <h2>Not connected to a room</h2>
+      <p class="muted">Create a room or join one with a code.</p>
+      <button class="btn primary" (click)="goHome()">Go Home</button>
+    </section>
+  </div>
+}

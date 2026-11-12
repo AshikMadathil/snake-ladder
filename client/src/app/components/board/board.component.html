@@ -1,0 +1,46 @@
+<div class="board-wrap">
+  <div class="board">
+    <div class="grid">
+      @for (c of cells; track c.n) {
+        <div class="cell" [class.alt]="c.alt" [class.goal]="c.n === 100">
+          <span>{{ c.n }}</span>
+          @if (c.n === 100) { <b class="crown">👑</b> }
+        </div>
+      }
+    </div>
+
+    <svg class="overlay" viewBox="0 0 100 100" aria-hidden="true">
+      @for (l of ladders; track $index) {
+        <g class="ladder">
+          <line [attr.x1]="l.r1.x1" [attr.y1]="l.r1.y1" [attr.x2]="l.r1.x2" [attr.y2]="l.r1.y2" />
+          <line [attr.x1]="l.r2.x1" [attr.y1]="l.r2.y1" [attr.x2]="l.r2.x2" [attr.y2]="l.r2.y2" />
+          @for (r of l.rungs; track $index) {
+            <line class="rung" [attr.x1]="r.x1" [attr.y1]="r.y1" [attr.x2]="r.x2" [attr.y2]="r.y2" />
+          }
+        </g>
+      }
+
+      @for (s of snakes; track $index) {
+        <g>
+          <path class="shadow" [attr.d]="s.d" />
+          <path class="body" [attr.d]="s.d" [attr.stroke]="s.color" />
+          <path class="spots" [attr.d]="s.d" />
+          <circle [attr.cx]="s.head.x" [attr.cy]="s.head.y" r="2.3" [attr.fill]="s.color" />
+          <line class="tongue" [attr.x1]="s.tongue.x1" [attr.y1]="s.tongue.y1" [attr.x2]="s.tongue.x2" [attr.y2]="s.tongue.y2" />
+          @for (e of s.eyes; track $index) {
+            <circle class="eye" [attr.cx]="e.x" [attr.cy]="e.y" r="0.75" />
+            <circle class="pupil" [attr.cx]="e.x" [attr.cy]="e.y" r="0.35" />
+          }
+        </g>
+      }
+    </svg>
+
+    @for (t of tokens; track t.id) {
+      <div class="token" [class.active]="t.active"
+           [style.left.%]="t.x" [style.top.%]="t.y"
+           [style.background]="t.bg" [style.color]="t.fg">{{ t.initial }}</div>
+    }
+
+    <div class="start-lane">START</div>
+  </div>
+</div>

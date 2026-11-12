@@ -10,6 +10,7 @@ import { GameService } from '../../services/game.service';
 })
 export class HomeComponent {
   error = '';
+  loading = false;
 
   constructor(private game: GameService, private router: Router) {}
 
@@ -17,7 +18,9 @@ export class HomeComponent {
     this.error = '';
     name = name.trim();
     if (!name) { this.error = 'Enter your name'; return; }
+    this.loading = true;
     const res = await this.game.createRoom(name);
+    this.loading = false;
     if (res.ok) this.router.navigate(['/room', res.code]);
     else this.error = res.error ?? 'Could not create room';
   }
@@ -27,7 +30,9 @@ export class HomeComponent {
     name = name.trim();
     code = code.trim().toUpperCase();
     if (!name || !code) { this.error = 'Enter name and room code'; return; }
+    this.loading = true;
     const res = await this.game.joinRoom(code, name);
+    this.loading = false;
     if (res.ok) this.router.navigate(['/room', res.code]);
     else this.error = res.error ?? 'Could not join room';
   }
