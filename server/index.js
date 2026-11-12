@@ -5,7 +5,9 @@ const cors = require('cors');
 
 const app = express();
 app.use(cors());
-app.get('/health', (req, res) => res.send('ok'));   // add this
+// app.get('/health', (req, res) => res.send('ok'));   // add this
+
+app.get('/', (req, res) => res.send('Snake & Ladder server is running'));
 
 const server = http.createServer(app);
 // const io = new Server(server, {
