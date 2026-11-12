@@ -1,0 +1,9 @@
+<div class="home">
+    <h1>🐍 Snake & Ladder 🪜</h1>
+    <input [(ngModel)]="name" placeholder="Your name" maxlength="12" />
+    <button (click)="create()">Create Room</button>
+    <hr />
+    <input [(ngModel)]="code" placeholder="Room code" maxlength="6" />
+    <button (click)="join()">Join Room</button>
+    <p class="error">{{ error }}</p>
+  </div>

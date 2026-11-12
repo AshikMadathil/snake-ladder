@@ -1,0 +1,7 @@
+.room { max-width: 500px; margin: 0 auto; padding: 16px; }
+.players { list-style: none; padding: 0; }
+.players li { padding: 10px; border-radius: 8px; margin-bottom: 6px; background: #f2f2f2; }
+.players li.active { outline: 3px solid #ff9800; }
+.dot { display: inline-block; width: 14px; height: 14px; border-radius: 50%; margin-right: 8px; }
+button { padding: 14px; font-size: 1.1rem; border-radius: 10px; width: 100%; }
+.roll { min-height: 56px; }

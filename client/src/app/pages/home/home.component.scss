@@ -1,0 +1,7 @@
+.home {
+    display: flex; flex-direction: column; gap: 12px;
+    max-width: 360px; margin: 10vh auto; padding: 16px; text-align: center;
+  }
+  input, button { padding: 14px; font-size: 1.1rem; border-radius: 10px; }
+  button { background: #4caf50; color: #fff; border: 0; cursor: pointer; }
+  .error { color: #d32f2f; }

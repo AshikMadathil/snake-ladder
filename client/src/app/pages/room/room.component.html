@@ -1,0 +1,39 @@
+@if (state) {
+    <div class="room">
+      <h2>Room: {{ state.code }}</h2>
+  
+      <ul class="players">
+        @for (p of state.players; track p.id; let i = $index) {
+          <li [class.active]="state.status === 'playing' && i === state.turnIndex">
+            <span class="dot" [style.background]="p.color"></span>
+            {{ p.name }} — square {{ p.pos }}
+          </li>
+        }
+      </ul>
+  
+      @if (state.status === 'lobby') {
+        <p>Waiting for players ({{ state.players.length }}/4)</p>
+        @if (isHost) {
+          <button (click)="game.start()" [disabled]="state.players.length < 2">Start Game</button>
+        }
+      }
+  
+      @if (state.status === 'playing') {
+        @if (state.lastRoll) {
+          <p>Last roll: 🎲 {{ state.lastRoll.roll }}</p>
+        }
+        <button class="roll" (click)="game.roll()" [disabled]="!isMyTurn">
+          {{ isMyTurn ? 'Roll Dice 🎲' : "Opponent's turn" }}
+        </button>
+        <!-- Board SVG will go here next -->
+      }
+  
+      @if (state.status === 'finished') {
+        <h2>🏆 Winner!</h2>
+        <button (click)="goHome()">Back to Home</button>
+      }
+    </div>
+  } @else {
+    <p>Not connected to a room.</p>
+    <button (click)="goHome()">Go Home</button>
+  }
