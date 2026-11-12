@@ -15,11 +15,28 @@
         </div>
         <div class="chips" [style.--n]="state.players.length">
           @for (p of state.players; track p.id; let i = $index) {
-            <div class="chip" [class.on]="state.status === 'playing' && i === state.turnIndex">
+            <div class="chip"
+            [class.on]="state.status === 'playing' && i === state.turnIndex"
+            [class.finished]="state.finishOrder?.includes(p.id)">
               <div class="av" [style.background]="col(p).bg" [style.color]="col(p).fg">
                 {{ p.name.charAt(0).toUpperCase() }}<em>{{ p.pos }}</em>
               </div>
-              <span>{{ p.id === game.myId() ? 'You' : p.name }}</span>
+              <span>
+                {{ p.id === game.myId() ? 'You' : p.name }}
+              
+                @if (state.finishOrder?.includes(p.id)) {
+                  <small>
+                    🏆 {{ state.finishOrder.indexOf(p.id) + 1 }}{{ 
+                      state.finishOrder.indexOf(p.id) === 0 ? 'st' :
+                      state.finishOrder.indexOf(p.id) === 1 ? 'nd' :
+                      state.finishOrder.indexOf(p.id) === 2 ? 'rd' : 'th'
+                    }} 
+                  </small>
+                }
+                @else if (state.loserId === p.id) {
+                  <small>😢 Loser</small>
+                }
+              </span>
             </div>
           }
         </div>
@@ -45,7 +62,14 @@
     </div>
 
     @if (state.status === 'finished') {
-      <app-winner [name]="winnerName" [isMe]="state.winnerId === game.myId()" (home)="goHome()" />
+      <app-winner
+        [players]="state.players"
+        [finishOrder]="state.finishOrder"
+        [loserId]="state.loserId"
+        [myId]="game.myId()"
+        [isMe]="state.winnerId === game.myId()"
+        (home)="goHome()"
+      />
     }
   }
 } @else {

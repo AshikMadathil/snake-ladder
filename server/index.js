@@ -39,6 +39,8 @@ function publicState(room) {
     turnIndex: room.turnIndex,
     lastRoll: room.lastRoll,
     winnerId: room.winnerId,
+    finishOrder: room.finishOrder,
+    loserId: room.loserId,
   };
 }
 
@@ -49,7 +51,8 @@ io.on('connection', (socket) => {
     const room = {
       code, status: 'lobby', hostId: socket.id,
       players: [{ id: socket.id, name, color: COLORS[0], pos: 0 }],
-      turnIndex: 0, lastRoll: null, winnerId: null,
+      turnIndex: 0, lastRoll: null, winnerId: null,  finishOrder: [],
+      loserId: null,
     };
     rooms.set(code, room);
     socket.join(code);
@@ -81,31 +84,88 @@ io.on('connection', (socket) => {
 
   socket.on('rollDice', () => {
     const room = rooms.get(socket.data.code);
-    if (!room || room.status !== 'playing') return;
-    const player = room.players[room.turnIndex];
-    if (player.id !== socket.id) return; // not your turn
 
+    if (!room || room.status !== 'playing') return;
+  
+    const player = room.players[room.turnIndex];
+  
+    if (!player || player.id !== socket.id) return;
+  
+    // Finished players cannot play again
+    if (room.finishOrder.includes(player.id)) return;
+  
     const roll = Math.floor(Math.random() * 6) + 1;
+  
     let from = player.pos;
     let to = from + roll;
     let jump = null;
-
+  
+    // Exact roll needed to reach 100
     if (to <= 100) {
       player.pos = to;
+  
       if (JUMPS[to]) {
         jump = { from: to, to: JUMPS[to] };
         player.pos = JUMPS[to];
       }
-    } // exact roll needed to land on 100
-
-    room.lastRoll = { playerId: player.id, roll, from, to: player.pos, jump };
-
-    if (player.pos === 100) {
-      room.status = 'finished';
-      room.winnerId = player.id;
-    } else if (roll !== 6) {
-      room.turnIndex = (room.turnIndex + 1) % room.players.length; // 6 = extra turn
     }
+  
+    room.lastRoll = {
+      playerId: player.id,
+      roll,
+      from,
+      to: player.pos,
+      jump,
+    };
+  
+    // Player reaches 100
+    if (player.pos === 100) {
+  
+      // Add player to finishing order
+      room.finishOrder.push(player.id);
+  
+      // First player is the overall winner
+      if (room.finishOrder.length === 1) {
+        room.winnerId = player.id;
+      }
+  
+      // If only one player remains, that player is the loser
+      if (room.finishOrder.length === room.players.length - 1) {
+  
+        const remainingPlayer = room.players.find(
+          p => !room.finishOrder.includes(p.id)
+        );
+  
+        if (remainingPlayer) {
+          room.loserId = remainingPlayer.id;
+        }
+  
+        room.status = 'finished';
+  
+      } else {
+        // Continue the game with the next unfinished player
+        let nextIndex = room.turnIndex;
+  
+        do {
+          nextIndex = (nextIndex + 1) % room.players.length;
+        } while (room.finishOrder.includes(room.players[nextIndex].id));
+  
+        room.turnIndex = nextIndex;
+      }
+  
+    } else if (roll !== 6) {
+  
+      // Skip players who already reached 100
+      let nextIndex = room.turnIndex;
+  
+      do {
+        nextIndex = (nextIndex + 1) % room.players.length;
+      } while (room.finishOrder.includes(room.players[nextIndex].id));
+  
+      room.turnIndex = nextIndex;
+    }
+  
+    // If roll is 6, the same unfinished player gets another turn
     io.to(room.code).emit('state', publicState(room));
   });
 

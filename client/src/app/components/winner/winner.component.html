@@ -1,4 +1,4 @@
-<div class="overlay">
+<!-- <div class="overlay">
   @for (c of confetti; track $index) {
     <i class="confetti" [style.left.%]="c.left" [style.animation-delay.s]="c.delay" [style.background]="c.color"></i>
   }
@@ -7,5 +7,59 @@
     <h2>{{ isMe ? 'You win!' : name + ' wins!' }}</h2>
     <p>{{ isMe ? 'Congratulations! 🎉' : 'Better luck next time!' }}</p>
     <button class="btn primary" (click)="home.emit()">Back to Home</button>
+  </div>
+</div> -->
+<div class="overlay">
+
+  @for (c of confetti; track $index) {
+    <i
+      class="confetti"
+      [style.left.%]="c.left"
+      [style.animation-delay.s]="c.delay"
+      [style.background]="c.color">
+    </i>
+  }
+
+  <div class="winner">
+
+    <div class="trophy">🏆</div>
+
+    <h2>Game Finished!</h2>
+    <p>Congratulations to all the winners! 🎉</p>
+
+    <div class="ranking-list">
+
+      @for (item of rankings; track item.player.id) {
+
+        <div class="ranking-item"
+             [class.first]="item.position === 1"
+             [class.second]="item.position === 2"
+             [class.third]="item.position === 3"
+             [class.loser]="item.title === 'Loser'">
+
+          <span class="rank-emoji">{{ item.emoji }}</span>
+
+          <div class="rank-details">
+            <strong>
+              {{ item.player.id === myId ? 'You' : item.player.name }}
+            </strong>
+
+            <small>{{ item.title }}</small>
+          </div>
+
+          @if (item.player.id === myId) {
+            <span class="you-label">You</span>
+          }
+
+        </div>
+
+      }
+
+    </div>
+
+    <button class="btn primary" (click)="home.emit()">
+      Back to Home
+    </button>
+
   </div>
 </div>
