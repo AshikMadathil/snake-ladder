@@ -14,7 +14,8 @@ const server = http.createServer(app);
 // 2. Allow your frontend (Socket.IO example)
 const io = new Server(server, {
     cors: { origin: process.env.CLIENT_URL || "*", methods: ["GET", "POST"] }
-  });// Board: 100 squares. Key = start, value = end.
+  });
+  // Board: 100 squares. Key = start, value = end.
 const JUMPS = {
   // ladders
   4: 14, 9: 31, 20: 38, 28: 84, 40: 59, 51: 67, 63: 81, 71: 91,
@@ -119,7 +120,7 @@ io.on('connection', (socket) => {
   });
 });
 
-server.listen(3000, () => console.log('Server on :3000'));
+
 
 // 1. Use the port Render gives you
 const PORT = process.env.PORT || 3000;
