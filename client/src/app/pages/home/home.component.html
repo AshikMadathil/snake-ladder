@@ -2,15 +2,13 @@
   <h1>🐍 Snake & Ladder 🐍</h1>
 
   <label>Your name</label>
-  <input [(ngModel)]="name" placeholder="Your name" maxlength="12" />
-
-  <button (click)="create()">Create Room</button>
+  <input #nameInput placeholder="Your name" maxlength="12" />
+  <button (click)="create(nameInput.value)">Create Room</button>
   <hr />
 
   <label>Room code</label>
-  <input [(ngModel)]="code" placeholder="e.g. AB12CD" maxlength="6"
-         autocapitalize="characters" autocomplete="off" />
-  <button (click)="join()">Join Room</button>
+  <input #codeInput placeholder="e.g. AB12CD" maxlength="6" autocapitalize="characters" autocomplete="off" />
+  <button (click)="join(nameInput.value, codeInput.value)">Join Room</button>
 
   <p class="error">{{ error }}</p>
 </div>

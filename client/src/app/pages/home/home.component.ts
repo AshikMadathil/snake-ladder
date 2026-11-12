@@ -18,15 +18,26 @@ export class HomeComponent {
   constructor(private game: GameService, private router: Router) {}
 
   async create() {
+    this.error = '';
     if (!this.name.trim()) { this.error = 'Enter your name'; return; }
-    const res = await this.game.createRoom(this.name.trim());
-    if (res.ok) this.router.navigate(['/room', res.code]);
+    try {
+      const res = await this.game.createRoom(this.name.trim());
+      if (res.ok) this.router.navigate(['/room', res.code]);
+      else this.error = res.error ?? 'Could not create room';
+    } catch {
+      this.error = 'Cannot reach server. Wait a minute and try again.';
+    }
   }
-
+  
   async join() {
+    this.error = '';
     if (!this.name.trim() || !this.code.trim()) { this.error = 'Enter name and room code'; return; }
-    const res = await this.game.joinRoom(this.code.trim(), this.name.trim());
-    if (res.ok) this.router.navigate(['/room', res.code]);
-    else this.error = res.error;
+    try {
+      const res = await this.game.joinRoom(this.code.trim(), this.name.trim());
+      if (res.ok) this.router.navigate(['/room', res.code]);
+      else this.error = res.error;
+    } catch {
+      this.error = 'Cannot reach server. Wait a minute and try again.';
+    }
   }
 }
