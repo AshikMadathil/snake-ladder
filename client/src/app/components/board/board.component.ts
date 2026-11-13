@@ -22,12 +22,15 @@ const SNAKE_COLORS = ['#2ea44f', '#8e44ad', '#e67e22', '#16a085', '#d63031', '#2
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
-/** Centre of square n (1..100) on a 100 x 100 board. */
+/** The board is taller than wide (squares are 10 wide x 10*R tall) so it fills a portrait phone screen. */
+const R = 1.2;
+
+/** Centre of square n (1..100) in board units: 100 wide, 100 * R tall. */
 function center(n: number): Pt {
   const i = n - 1;
   const row = Math.floor(i / 10);
   const col = row % 2 === 0 ? i % 10 : 9 - (i % 10);
-  return { x: col * 10 + 5, y: (9 - row) * 10 + 5 };
+  return { x: col * 10 + 5, y: ((9 - row) * 10 + 5) * R };
 }
 
 const CELLS = Array.from({ length: 100 }, (_, i) => {
@@ -105,10 +108,6 @@ export class BoardComponent implements OnChanges, OnDestroy {
   @Input() players: any[] = [];
   @Input() activeId = '';
   @Input() lastRoll: any = null;
-  /** Zoomed mode: the board is enlarged and the camera follows the token of focusId. */
-  @Input() zoom = false;
-  @Input() focusId = '';
-
   readonly cells = CELLS;
   readonly ladders = LADDER_SHAPES;
   readonly snakes = SNAKE_SHAPES;
@@ -180,11 +179,11 @@ export class BoardComponent implements OnChanges, OnDestroy {
         const a = (k / same.length) * Math.PI * 2;
         const r = same.length > 1 ? 2.8 : 0;
         x = c.x + Math.cos(a) * r;
-        y = c.y + Math.sin(a) * r;
+        y = (c.y + Math.sin(a) * r) / R; // tokens are placed in % of the board height
       } else {
-        // waiting area: under the board, or in the bottom-left corner when zoomed
-        x = this.zoom ? 7 + i * 7 : 9 + i * 11;
-        y = this.zoom ? 96 : 105.5;
+        // waiting area: the START lane under the board
+        x = 9 + i * 11;
+        y = 104.5;
       }
       const col = colorOf(p.color);
       return {
@@ -200,19 +199,5 @@ export class BoardComponent implements OnChanges, OnDestroy {
         left: !!p.left && !p.finished,
       };
     });
-  }
-
-  /** Zoom in and keep the followed token in the middle (clamped so the board edges never show gaps). */
-  get camera(): string {
-    if (!this.zoom) return 'none';
-    const s = 1.8;
-    const t = this.tokens;
-    const f = t.find((x) => x.id === this.focusId) ?? t[0];
-    if (!f) return 'none';
-    const max = (s - 1) * 50;
-    const clamp = (v: number) => Math.max(-max, Math.min(max, v));
-    const tx = clamp(-(Math.min(f.x, 100) - 50) * s);
-    const ty = clamp(-(Math.min(f.y, 100) - 50) * s);
-    return `translate(${tx}%, ${ty}%) scale(${s})`;
   }
 }

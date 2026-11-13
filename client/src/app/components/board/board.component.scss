@@ -1,11 +1,8 @@
 :host { display: block; }
 
-.board-wrap { width: 100%; max-width: 640px; margin: 0 auto; padding-bottom: 9%; }
+.board-wrap { width: 100%; max-width: 560px; margin: 0 auto; padding-bottom: 10.8%; }
 
-.board { position: relative; width: 100%; aspect-ratio: 1; container-type: inline-size; transition: transform 0.55s ease; }
-
-.board-wrap.zoomed { overflow: hidden; padding-bottom: 0; border-radius: 14px; }
-.zoomed .start-lane { display: none; }
+.board { position: relative; width: 100%; aspect-ratio: 100 / 120; container-type: inline-size; }
 
 .grid {
   position: absolute;

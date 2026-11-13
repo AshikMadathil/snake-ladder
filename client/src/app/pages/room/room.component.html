@@ -1,6 +1,6 @@
 @if (state) {
   @if (state.status === 'lobby') {
-    <app-lobby [state]="state" [myId]="game.myId()" (start)="game.start()" (leave)="goHome()" />
+    <app-lobby [state]="state" [myId]="game.myId()" (start)="start()" (leave)="goHome()" />
   } @else {
     <div class="screen">
       <header class="top">
@@ -14,7 +14,6 @@
               <button class="icon mic" [class.muted]="voice.muted()" (click)="voice.toggleMute()"
                       [attr.aria-label]="voice.muted() ? 'Unmute microphone' : 'Mute microphone'">🎤</button>
             }
-            <button class="icon" [class.on]="zoom" (click)="toggleZoom()" aria-label="Zoom the board">🔍</button>
             <button class="icon" (click)="sound.toggle()" [attr.aria-label]="sound.muted ? 'Unmute sound' : 'Mute sound'">
               {{ sound.muted ? '🔇' : '🔊' }}
             </button>
@@ -23,8 +22,8 @@
         </div>
         <div class="chips" [style.--n]="state.players.length">
           @for (p of state.players; track p.id; let i = $index) {
-            <div class="chip" [class.on]="state.status === 'playing' && i === state.turnIndex"
-                 [class.talk]="voice.speaking().has(p.id)" [class.done]="p.finished" [class.left]="p.left && !p.finished">
+            <div class="chip" [class.on]="state.status === 'playing' && i === shownIndex"
+                 [class.talk]="voice.speaking().has(p.id)" [class.done]="p.finished" [class.left]="(p.left && !p.finished) || p.offline">
               <div class="av" [style.background]="col(p).bg" [style.color]="col(p).fg">
                 {{ p.name.charAt(0).toUpperCase() }}<em>{{ badge(p) }}</em>
               </div>
@@ -32,12 +31,11 @@
             </div>
           }
         </div>
-        <div class="banner" [class.mine]="isMyTurn">{{ banner }}</div>
+        <div class="banner" [class.mine]="canRoll">{{ banner }}</div>
       </header>
 
       <section class="slot">
-        <app-board [players]="state.players" [activeId]="activeId" [lastRoll]="state.lastRoll"
-                   [zoom]="zoom" [focusId]="focusId" />
+        <app-board [players]="view" [activeId]="activeId" [lastRoll]="state.lastRoll" />
       </section>
 
       <footer class="dock">
@@ -46,14 +44,15 @@
           @for (k of rollKey; track k) {
             <app-dice [face]="diceFace" [rolling]="rolling" />
           }
-          <button class="btn primary roll" [class.go]="isMyTurn && !rolling"
-                  [disabled]="!isMyTurn || rolling || state.status !== 'playing'" (click)="roll()">
+          <button class="btn primary roll" [class.go]="canRoll"
+                  [disabled]="!canRoll" (click)="roll()">
             {{ rollLabel }}
           </button>
         </div>
       </footer>
     </div>
 
+    @if (!game.online()) { <div class="toast">📡 Connection lost… reconnecting</div> }
     @if (voice.error()) { <div class="toast">{{ voice.error() }}</div> }
 
     @if (toast) {
@@ -66,6 +65,13 @@
       <app-winner [standings]="standings" [myId]="game.myId()" (home)="goHome()" />
     }
   }
+} @else if (game.rejoining()) {
+  <div class="empty">
+    <div class="card">
+      <h2>Getting back into your game…</h2>
+      <p>The server may be waking up, this can take up to a minute.</p>
+    </div>
+  </div>
 } @else {
   <div class="empty">
     <div class="card">

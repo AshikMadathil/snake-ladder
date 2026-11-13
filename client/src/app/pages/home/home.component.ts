@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, effect } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { GameService } from '../../services/game.service';
 
@@ -15,6 +15,11 @@ export class HomeComponent {
   savedName = '';
 
   constructor(private game: GameService, private router: Router, route: ActivatedRoute) {
+    // reloaded the page or came back while a game is running: go straight back into it
+    effect(() => {
+      const s = this.game.state();
+      if (s && this.game.session()) void this.router.navigate(['/room', s.code]);
+    });
     // invite links look like /?code=ABC123
     this.code = (route.snapshot.queryParamMap.get('code') ?? '').toUpperCase().slice(0, 6);
     try { this.savedName = localStorage.getItem('sl_name') ?? ''; } catch { /* no storage */ }

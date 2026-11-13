@@ -1,10 +1,9 @@
 :host { display: block; }
 
-.empty { min-height: 100vh; min-height: 100dvh; display: grid; place-items: center; padding: 16px; text-align: center; }
+.empty { min-height: 100dvh; display: grid; place-items: center; padding: 16px; text-align: center; }
 .empty .card { max-width: 380px; width: 100%; p { color: var(--muted); } }
 
 .screen {
-  height: 100vh;
   height: 100dvh;
   display: flex;
   flex-direction: column;
@@ -19,7 +18,7 @@
 .code {
   padding: 9px 14px;
   border-radius: 12px;
-  background: rgba(0, 0, 0, 0.28);
+  background: #00000047;
   font-weight: 700;
   letter-spacing: 0.18em;
   color: var(--accent);
@@ -36,7 +35,7 @@
   transition: background 0.2s, opacity 0.3s;
 
   span { max-width: 100%; padding: 0 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.74rem; color: var(--muted); }
-  &.on { background: rgba(255, 200, 61, 0.16); outline: 2px solid var(--accent); span { color: #fff; font-weight: 600; } }
+  &.on { background: #ffc83d29; outline: 2px solid var(--accent); span { color: #fff; font-weight: 600; } }
   &.left { opacity: 0.4; }
 }
 .av {
@@ -48,7 +47,7 @@
   font-weight: 700;
   border-radius: 50%;
   border: 2px solid #fff;
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 3px 8px #0006;
 
   em {
     position: absolute;
@@ -76,17 +75,17 @@
 
   &.mine { background: linear-gradient(135deg, #ff9f43, #ff5e62); border-color: transparent; animation: glow 1.4s ease-in-out infinite; }
 }
-@keyframes glow { 50% { box-shadow: 0 0 0 6px rgba(255, 159, 67, 0.3); } }
+@keyframes glow { 50% { box-shadow: 0 0 0 6px #ff9f434d; } }
 
 .slot { flex: 1; min-height: 0; display: grid; place-items: center; container-type: size; }
-.slot app-board { width: min(100cqw, calc(100cqh / 1.09)); }
+.slot app-board { width: min(100cqw, calc(100cqh / 1.308)); }
 
 .dock {
   margin: 0 -4px;
   padding: 12px 14px max(14px, env(safe-area-inset-bottom));
   display: grid;
   gap: 10px;
-  background: rgba(10, 6, 40, 0.55);
+  background: #0a062888;
   backdrop-filter: blur(14px);
   border-top: 1px solid var(--card-border);
   border-radius: 26px 26px 0 0;
@@ -96,7 +95,7 @@
 .roll { min-height: 66px; font-size: 1.15rem; line-height: 1.25; }
 .roll.go { animation: nudge 1.2s ease-in-out infinite; }
 @keyframes nudge {
-  50% { transform: scale(1.035); box-shadow: 0 0 0 7px rgba(255, 159, 67, 0.28), 0 6px 18px rgba(255, 94, 98, 0.4); }
+  50% { transform: scale(1.035); box-shadow: 0 0 0 7px #ff9f4347, 0 6px 18px #ff5e6266; }
 }
 
 .toast {
@@ -110,7 +109,7 @@
   font-weight: 700;
   color: #3b2f00;
   background: linear-gradient(135deg, #ffe27a, #ff9f43);
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 10px 24px #0006;
   animation: toast 3.4s ease both;
 }
 @keyframes toast {
@@ -119,7 +118,6 @@
   100% { opacity: 0; transform: translate(-50%, -8px); }
 }
 
-/* landscape phones, tablets and desktop: board on the left, controls on the right */
 @media (min-aspect-ratio: 1/1) {
   .screen {
     display: grid;
@@ -136,3 +134,16 @@
 .chip.talk .av { box-shadow: 0 0 0 3px #2ecc71; }
 .icon.mic.muted { background: #e5484d; border-color: transparent; position: relative; }
 .icon.mic.muted::after { content: ''; position: absolute; left: 8px; right: 8px; top: 50%; height: 3px; background: #fff; transform: rotate(-45deg); border-radius: 2px; }
+
+@media (max-height: 700px) and (max-aspect-ratio: 1/1) {
+  .screen { gap: 4px; padding-top: 6px; }
+  .top { gap: 4px; }
+  .top .icon { width: 36px; height: 36px; font-size: 1.05rem; }
+  .chip { padding: 3px 2px; gap: 2px; }
+  .av { width: 30px; height: 30px; font-size: 0.85rem; }
+  .banner { padding: 5px; font-size: 0.95rem; }
+  .dock { padding: 8px 12px 10px; gap: 6px; }
+  .log { min-height: 1.4em; font-size: 0.82rem; }
+  .roll { min-height: 50px; font-size: 1rem; }
+  app-dice { --s: 52px; }
+}
