@@ -19,6 +19,9 @@
            autocapitalize="characters" autocomplete="off" />
     <button class="btn" [class.primary]="code" [class.secondary]="!code" [disabled]="loading"
             (click)="join(nameInput.value, codeInput.value)">Join Room</button>
+    @if (code) {
+      <button class="btn ghost" (click)="backToHome()">← Back to home</button>
+    }
 
     @if (loading) {
       <p class="info">Connecting to server… the first connection can take up to a minute.</p>

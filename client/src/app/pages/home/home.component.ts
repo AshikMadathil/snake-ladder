@@ -22,7 +22,15 @@ export class HomeComponent {
     });
     // invite links look like /?code=ABC123
     this.code = (route.snapshot.queryParamMap.get('code') ?? '').toUpperCase().slice(0, 6);
+    // keep the address bar clean so the back button always lands on the plain home page
+    if (this.code) void this.router.navigate([], { relativeTo: route, queryParams: {}, replaceUrl: true });
     try { this.savedName = localStorage.getItem('sl_name') ?? ''; } catch { /* no storage */ }
+  }
+
+  /** Back button of the join section: forget the invite and show the normal home page. */
+  backToHome() {
+    this.code = '';
+    this.error = '';
   }
 
   private remember(name: string) {
