@@ -1,0 +1,33 @@
+<button class="icon chat" [class.on]="open" (click)="toggle()" aria-label="Chat">
+  💬@if (unread) { <b>{{ unread > 9 ? '9+' : unread }}</b> }
+</button>
+
+@if (open) {
+  <div class="shade" (click)="open = false"></div>
+  <section class="sheet" aria-label="Chat">
+    <header>
+      <h3>💬 Chat</h3>
+      <button class="x" (click)="open = false" aria-label="Close chat">✕</button>
+    </header>
+
+    <div class="list" #list>
+      @for (m of game.messages(); track m.id) {
+        <div class="msg" [class.me]="m.color === myColor">
+          <small [style.color]="bg(m.color)">{{ m.color === myColor ? 'You' : m.name }}</small>
+          <p>{{ m.text }}</p>
+        </div>
+      } @empty {
+        <p class="none">No messages yet. Say hi! 👋</p>
+      }
+    </div>
+
+    <div class="quick">
+      @for (q of quick; track q) { <button (click)="say(q)">{{ q }}</button> }
+    </div>
+
+    <div class="send">
+      <input #box maxlength="200" placeholder="Type a message…" autocomplete="off" (keydown.enter)="send(box)" />
+      <button class="btn primary" (click)="send(box)">Send</button>
+    </div>
+  </section>
+}

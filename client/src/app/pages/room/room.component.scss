@@ -14,13 +14,14 @@
 
 .top { display: grid; gap: 8px; padding: 0 6px; }
 .bar { display: flex; align-items: center; justify-content: space-between; }
-.right { display: flex; align-items: center; gap: 8px; }
+.right { display: flex; align-items: center; gap: 6px; }
 .code {
-  padding: 9px 14px;
+  padding: 8px 9px;
   border-radius: 12px;
   background: #00000047;
   font-weight: 700;
-  letter-spacing: 0.18em;
+  font-size: 0.85rem;
+  letter-spacing: 0.1em;
   color: var(--accent);
 }
 

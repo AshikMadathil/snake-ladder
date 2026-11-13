@@ -7,6 +7,7 @@
         <div class="bar">
           <button class="icon" (click)="leaveGame()" aria-label="Leave game">←</button>
           <div class="right">
+            <app-chat [myColor]="me?.color ?? ''" />
             <button class="icon" [class.on]="voice.joined()" [disabled]="voice.connecting()"
                     (click)="voice.joined() ? voice.leave() : voice.join()"
                     [attr.aria-label]="voice.joined() ? 'Leave voice chat' : 'Join voice chat'">🎧</button>

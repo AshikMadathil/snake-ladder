@@ -4,6 +4,7 @@ import { GameService } from '../../services/game.service';
 import { SoundService } from '../../services/sound.service';
 import { VoiceService } from '../../services/voice.service';
 import { BoardComponent, colorOf } from '../../components/board/board.component';
+import { ChatComponent } from '../../components/chat/chat.component';
 import { DiceComponent } from '../../components/dice/dice.component';
 import { LobbyComponent } from '../../components/lobby/lobby.component';
 import { WinnerComponent } from '../../components/winner/winner.component';
@@ -15,7 +16,7 @@ const PAUSE_MS = 800; // the number stays on the dice this long before the coin 
 @Component({
   selector: 'app-room',
   standalone: true,
-  imports: [BoardComponent, DiceComponent, LobbyComponent, WinnerComponent],
+  imports: [ChatComponent, BoardComponent, DiceComponent, LobbyComponent, WinnerComponent],
   templateUrl: './room.component.html',
   styleUrl: './room.component.scss',
 })

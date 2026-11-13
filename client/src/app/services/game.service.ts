@@ -10,6 +10,8 @@ const KEY = 'sl_session';
 export class GameService {
   socket?: Socket;
   state = signal<any>(null);
+  /** Text chat messages of the current room. */
+  messages = signal<any[]>([]);
   myId = signal<string>('');
   /** True while the socket is connected. */
   online = signal(true);
@@ -30,6 +32,8 @@ export class GameService {
       });
       this.socket.on('disconnect', () => this.online.set(false));
       this.socket.on('state', (s) => this.state.set(s));
+      this.socket.on('chatHistory', (m) => this.messages.set(m ?? []));
+      this.socket.on('chat', (m) => this.messages.update((l) => [...l.filter((x) => x.id !== m.id), m].slice(-100)));
     }
   }
 
@@ -69,12 +73,15 @@ export class GameService {
     });
   }
 
+  chat(text: string) { this.socket?.emit('chat', { text }); }
+
   roll() { this.socket?.emit('rollDice'); }
 
   leave() {
     this.socket?.emit('leaveRoom');
     this.save(null);
     this.state.set(null);
+    this.messages.set([]);
   }
 
   private load(): Session | null {

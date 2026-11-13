@@ -13,6 +13,18 @@ interface Peer {
   queue: RTCIceCandidateInit[];
 }
 
+/** Ask for high-quality mono Opus speech (48 kHz, forward error correction against packet loss). */
+function tuneOpus(sdp?: string): string {
+  if (!sdp) return '';
+  const pt = /a=rtpmap:(\d+) opus\/48000/.exec(sdp)?.[1];
+  if (!pt) return sdp;
+  const params = 'minptime=10;useinbandfec=1;stereo=0;sprop-stereo=0;maxaveragebitrate=64000;maxplaybackrate=48000';
+  const line = new RegExp(`a=fmtp:${pt} .*`);
+  return line.test(sdp)
+    ? sdp.replace(line, `a=fmtp:${pt} ${params}`)
+    : sdp.replace(new RegExp(`(a=rtpmap:${pt} opus/48000/2\\r?\\n)`), `$1a=fmtp:${pt} ${params}\r\n`);
+}
+
 /** Group voice chat: WebRTC audio straight between players, Socket.IO only carries the signalling. */
 @Injectable({ providedIn: 'root' })
 export class VoiceService {
@@ -41,8 +53,15 @@ export class VoiceService {
     this.connecting.set(true);
     try {
       this.local = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          channelCount: { ideal: 1 },
+          sampleRate: { ideal: 48000 },
+        },
       });
+      this.local.getAudioTracks().forEach((t) => { try { (t as any).contentHint = 'speech'; } catch { /* optional */ } });
     } catch {
       return this.fail('Allow the microphone to use voice chat');
     }
@@ -95,6 +114,7 @@ export class VoiceService {
       this.meter(id, e.streams[0]);
     };
     pc.onconnectionstatechange = () => {
+      if (pc.connectionState === 'connected') this.capBitrate(pc);
       if (pc.connectionState === 'failed' || pc.connectionState === 'closed') this.drop(id);
     };
     this.peers.set(id, peer);
@@ -103,7 +123,8 @@ export class VoiceService {
 
   private async call(id: string) {
     const { pc } = this.makePeer(id);
-    await pc.setLocalDescription(await pc.createOffer());
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription({ type: offer.type, sdp: tuneOpus(offer.sdp) });
     this.send(id, { sdp: pc.localDescription });
   }
 
@@ -119,7 +140,8 @@ export class VoiceService {
         await peer.pc.setRemoteDescription(data.sdp);
         for (const c of peer.queue.splice(0)) await peer.pc.addIceCandidate(c);
         if (data.sdp.type === 'offer') {
-          await peer.pc.setLocalDescription(await peer.pc.createAnswer());
+          const answer = await peer.pc.createAnswer();
+          await peer.pc.setLocalDescription({ type: answer.type, sdp: tuneOpus(answer.sdp) });
           this.send(from, { sdp: peer.pc.localDescription });
         }
       } else if (data.ice && peer) {
@@ -127,6 +149,17 @@ export class VoiceService {
         else peer.queue.push(data.ice);
       }
     } catch { /* a bad signal only affects that one connection */ }
+  }
+
+  /** Steady 64 kbps speech: clear voice without eating the mobile data plan. */
+  private capBitrate(pc: RTCPeerConnection) {
+    pc.getSenders().forEach((s) => {
+      if (s.track?.kind !== 'audio') return;
+      const p = s.getParameters();
+      if (!p.encodings?.length) p.encodings = [{}];
+      p.encodings[0].maxBitrate = 64000;
+      s.setParameters(p).catch(() => undefined);
+    });
   }
 
   private send(to: string, data: any) { this.game.socket?.emit('voiceSignal', { to, data }); }

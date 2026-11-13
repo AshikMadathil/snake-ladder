@@ -199,6 +199,8 @@ io.on('connection', (socket) => {
       winnerId: null,
       finishedCount: 0,
       voice: new Set(), // socket ids that joined the voice chat
+      chat: [],         // last text messages of the room
+      chatNo: 0,
     };
     rooms.set(code, room);
     socket.join(code);
@@ -219,6 +221,7 @@ io.on('connection', (socket) => {
     socket.join(room.code);
     socket.data.code = room.code;
     cb({ ok: true, code: room.code, token: me.token });
+    socket.emit('chatHistory', room.chat);
     io.to(room.code).emit('state', publicState(room));
   });
 
@@ -242,6 +245,7 @@ io.on('connection', (socket) => {
     socket.join(room.code);
     socket.data.code = room.code;
     cb({ ok: true, code: room.code });
+    socket.emit('chatHistory', room.chat);
     io.to(room.code).emit('state', publicState(room));
   });
 
@@ -270,6 +274,20 @@ io.on('connection', (socket) => {
     player.missed = 0;
     doRoll(room, player);
     io.to(room.code).emit('state', publicState(room));
+  });
+
+  // ---- Text chat: relayed to everybody in the room, last 60 messages are kept for people who rejoin ----
+  let lastChat = 0;
+  socket.on('chat', ({ text } = {}) => {
+    const room = rooms.get(socket.data.code);
+    const p = room && room.players.find((x) => x.id === socket.id);
+    const clean = String(text || '').replace(/\s+/g, ' ').trim().slice(0, 200);
+    if (!p || p.left || !clean || Date.now() - lastChat < 400) return;
+    lastChat = Date.now();
+    const msg = { id: ++room.chatNo, color: p.color, name: p.name, text: clean, t: Date.now() };
+    room.chat.push(msg);
+    if (room.chat.length > 60) room.chat.shift();
+    io.to(room.code).emit('chat', msg);
   });
 
   // ---- Voice chat: the server only relays WebRTC signalling, the audio itself flows peer-to-peer ----
