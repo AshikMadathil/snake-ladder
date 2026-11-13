@@ -2,6 +2,7 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
+const { randomUUID } = require('crypto');
 
 const app = express();
 app.use(cors());
@@ -22,8 +23,14 @@ const JUMPS = {
 };
 const COLORS = ['red', 'blue', 'green', 'yellow'];
 const MAX_PLAYERS = 4;
-const TURN_MS = 15000;     // time limit for one turn; then the dice is rolled automatically
+const TURN_MS = 60000;     // time limit for one turn (1 minute); then the dice is rolled automatically
+const PAUSE_MS = 800;      // the number stays on the dice this long before the token starts to move
+const DICE_MS = 900;       // the dice tumbles this long on every screen before the number shows
+const HOP_MS = 210;        // one square of token movement on the client
+const SLIDE_MS = 1100;     // snake / ladder slide on the client
+const START_ROLLS = [1, 6]; // a token on the start line only moves out on one of these
 const MAX_MISSED = 3;      // this many auto-rolls in a row and the player is removed as inactive
+const GRACE_MS = 60000;    // a dropped connection (phone locked, app switched, bad network) has this long to come back
 const rooms = new Map();
 
 const makeCode = () => Math.random().toString(36).slice(2, 8).toUpperCase();
@@ -37,7 +44,15 @@ const newPlayer = (id, name, color) => ({
   rank: null,      // 1 = first to finish ... the last player gets the final rank
   loser: false,    // the one player left when everybody else has finished
   missed: 0,       // turns in a row that were rolled automatically
-  left: false,     // disconnected during the game (stays in the list so turn order is stable)
+  left: false,     // left or was removed (stays in the list during a game so turn order is stable)
+  offline: false,  // connection dropped, waiting for the player to come back
+  token: randomUUID(), // secret that lets this player rejoin after a reload / reconnect
+  grace: null,     // timer that removes the player if they do not come back
+});
+
+const publicPlayer = (p) => ({
+  id: p.id, name: p.name, color: p.color, pos: p.pos, finished: p.finished,
+  rank: p.rank, loser: p.loser, left: p.left, offline: p.offline,
 });
 
 function publicState(room) {
@@ -45,11 +60,12 @@ function publicState(room) {
     code: room.code,
     status: room.status,
     hostId: room.hostId,
-    players: room.players,
+    players: room.players.map(publicPlayer),
     turnIndex: room.turnIndex,
     lastRoll: room.lastRoll,
     winnerId: room.winnerId,
     turnLeft: room.deadline ? Math.max(0, room.deadline - Date.now()) : 0,
+    readyIn: Math.max(0, (room.readyAt || 0) - Date.now()), // dice + token movement still playing on the screens
     turnMs: TURN_MS,
   };
 }
@@ -74,7 +90,8 @@ function clearTimer(room) {
 function armTimer(room) {
   clearTimeout(room.timer);
   if (room.status !== 'playing') { room.deadline = 0; return; }
-  room.deadline = Date.now() + TURN_MS;
+  // the next player's minute starts after the dice and the token movement have finished
+  room.deadline = Math.max(Date.now(), room.readyAt || 0) + TURN_MS;
   room.timer = setTimeout(() => {
     if (room.status !== 'playing') return;
     const player = room.players[room.turnIndex];
@@ -88,7 +105,7 @@ function armTimer(room) {
     }
     doRoll(room, player);
     io.to(room.code).emit('state', publicState(room));
-  }, TURN_MS + 300);
+  }, Math.max(0, room.deadline - Date.now()) + 300);
 }
 
 /** Roll the dice for a player: move, apply snake / ladder, rank, pass the turn (a 6 gives no extra turn). */
@@ -97,8 +114,11 @@ function doRoll(room, player) {
   const from = player.pos;
   const to = from + roll;
   let jump = null;
+  const blocked = from === 0 && !START_ROLLS.includes(roll); // needs a 1 or a 6 to start
 
-  if (to <= 100) {
+  if (blocked) {
+    // stays on the start line
+  } else if (to <= 100) {
     player.pos = to;
     if (JUMPS[to]) {
       jump = { from: to, to: JUMPS[to] };
@@ -114,7 +134,12 @@ function doRoll(room, player) {
     if (rank === 1) room.winnerId = player.id;
   }
 
-  room.lastRoll = { playerId: player.id, roll, from, to: player.pos, jump, rank, n: (room.rollNo = (room.rollNo || 0) + 1) };
+  room.lastRoll = { playerId: player.id, roll, from, to: player.pos, jump, rank, blocked, n: (room.rollNo = (room.rollNo || 0) + 1) };
+  // how long the screens need to show the dice and walk the token before the next player may roll
+  const walked = player.pos !== from;
+  const steps = walked ? Math.min(roll, 6) : 0;
+  room.readyAt = Date.now() + DICE_MS + PAUSE_MS + steps * HOP_MS + (jump ? SLIDE_MS : 0) + 400;
+
   if (!checkGameOver(room)) advanceTurn(room);
   else clearTimer(room);
 }
@@ -136,15 +161,39 @@ function checkGameOver(room) {
   return true;
 }
 
+/** Take a player out of a room for good (they tapped leave, or did not come back in time). */
+function removePlayer(room, player) {
+  clearTimeout(player.grace);
+  player.grace = null;
+  if (room.voice.delete(player.id)) io.to(room.code).emit('voiceLeft', player.id);
+  const idx = room.players.indexOf(player);
+  if (idx === -1 || player.left) return;
+
+  if (room.status === 'lobby') room.players.splice(idx, 1);
+  else player.left = true; // keep them in the list so indexes and ranks stay stable
+
+  const connected = room.players.filter((p) => !p.left);
+  if (connected.length === 0) { clearTimer(room); rooms.delete(room.code); return; }
+  if (room.hostId === player.id) room.hostId = (connected.find((p) => !p.offline) || connected[0]).id;
+
+  if (room.status === 'playing') {
+    if (!checkGameOver(room) && room.players[room.turnIndex].left) advanceTurn(room);
+  }
+  if (room.turnIndex >= room.players.length) room.turnIndex = 0;
+  io.to(room.code).emit('state', publicState(room));
+}
+
 io.on('connection', (socket) => {
   socket.on('createRoom', ({ name } = {}, cb) => {
+    leave(); // never be in two rooms at once
     let code;
     do { code = makeCode(); } while (code.length !== 6 || rooms.has(code));
+    const host = newPlayer(socket.id, name, COLORS[0]);
     const room = {
       code,
       status: 'lobby',
       hostId: socket.id,
-      players: [newPlayer(socket.id, name, COLORS[0])],
+      players: [host],
       turnIndex: 0,
       lastRoll: null,
       winnerId: null,
@@ -154,30 +203,60 @@ io.on('connection', (socket) => {
     rooms.set(code, room);
     socket.join(code);
     socket.data.code = code;
-    cb({ ok: true, code });
+    cb({ ok: true, code, token: host.token });
     io.to(code).emit('state', publicState(room));
   });
 
   socket.on('joinRoom', ({ code, name } = {}, cb) => {
+    leave();
     const room = rooms.get(String(code || '').toUpperCase());
     if (!room) return cb({ ok: false, error: 'Room not found' });
     if (room.status !== 'lobby') return cb({ ok: false, error: 'Game already started' });
     if (room.players.length >= MAX_PLAYERS) return cb({ ok: false, error: 'Room is full' });
     const color = COLORS.find((c) => !room.players.some((p) => p.color === c));
-    room.players.push(newPlayer(socket.id, name, color));
+    const me = newPlayer(socket.id, name, color);
+    room.players.push(me);
+    socket.join(room.code);
+    socket.data.code = room.code;
+    cb({ ok: true, code: room.code, token: me.token });
+    io.to(room.code).emit('state', publicState(room));
+  });
+
+  // Come back after a reload or a dropped connection: the secret token proves who you are.
+  socket.on('rejoinRoom', ({ code, token } = {}, cb) => {
+    const room = rooms.get(String(code || '').toUpperCase());
+    const p = room && token ? room.players.find((x) => x.token === token) : null;
+    if (!p || p.left) return cb({ ok: false, error: 'That game is no longer available' });
+    clearTimeout(p.grace);
+    p.grace = null;
+    p.offline = false;
+    const old = p.id;
+    if (old !== socket.id) {
+      p.id = socket.id;
+      if (room.hostId === old) room.hostId = p.id;
+      if (room.winnerId === old) room.winnerId = p.id;
+      if (room.lastRoll && room.lastRoll.playerId === old) room.lastRoll.playerId = p.id;
+      if (room.voice.delete(old)) io.to(room.code).emit('voiceLeft', old);
+      io.sockets.sockets.get(old)?.disconnect(true); // the stale connection of the same player
+    }
     socket.join(room.code);
     socket.data.code = room.code;
     cb({ ok: true, code: room.code });
     io.to(room.code).emit('state', publicState(room));
   });
 
-  socket.on('startGame', () => {
+  socket.on('startGame', (_d, cb) => {
+    const reply = (r) => typeof cb === 'function' && cb(r);
     const room = rooms.get(socket.data.code);
-    if (!room || room.status !== 'lobby') return;
-    if (room.hostId !== socket.id || room.players.length < 2) return;
+    if (!room) return reply({ ok: false, error: 'You are not in a room. Go back and rejoin.' });
+    if (room.status !== 'lobby') return reply({ ok: true });
+    if (room.hostId !== socket.id) return reply({ ok: false, error: 'Only the host can start the game' });
+    if (room.players.length < 2) return reply({ ok: false, error: 'Need at least 2 players' });
     room.status = 'playing';
     room.turnIndex = 0;
+    room.readyAt = 0;
     armTimer(room);
+    reply({ ok: true });
     io.to(room.code).emit('state', publicState(room));
   });
 
@@ -187,6 +266,7 @@ io.on('connection', (socket) => {
     const player = room.players[room.turnIndex];
     if (!player || player.id !== socket.id || player.finished || player.left) return; // not your turn
 
+    if (Date.now() < (room.readyAt || 0) - 200) return; // previous move is still being shown
     player.missed = 0;
     doRoll(room, player);
     io.to(room.code).emit('state', publicState(room));
@@ -215,35 +295,31 @@ io.on('connection', (socket) => {
     io.to(to).emit('voiceSignal', { from: socket.id, data });
   });
 
-  // Called when a player taps "leave" (or closes the tab): remove them from the room.
+  // Player tapped leave: out of the room for good.
   function leave() {
-    voiceLeave();
     const room = rooms.get(socket.data.code);
     if (!room) return;
     socket.leave(room.code);
     socket.data.code = null;
-    const idx = room.players.findIndex((p) => p.id === socket.id);
-    if (idx === -1) return;
+    const p = room.players.find((x) => x.id === socket.id);
+    if (p) removePlayer(room, p);
+  }
 
-    if (room.status === 'lobby') {
-      room.players.splice(idx, 1);
-    } else {
-      room.players[idx].left = true; // keep them in the list so indexes and ranks stay stable
-    }
-
-    const connected = room.players.filter((p) => !p.left);
-    if (connected.length === 0) { clearTimer(room); rooms.delete(room.code); return; }
-    if (room.hostId === socket.id) room.hostId = connected[0].id;
-
-    if (room.status === 'playing') {
-      if (!checkGameOver(room) && room.players[room.turnIndex].left) advanceTurn(room);
-    }
-    if (room.turnIndex >= room.players.length) room.turnIndex = 0;
+  // Connection dropped (locked phone, switched app, bad network): keep the seat for a while.
+  function dropped() {
+    const room = rooms.get(socket.data.code);
+    if (!room) return;
+    const p = room.players.find((x) => x.id === socket.id); // not found = already rejoined on a new socket
+    if (!p || p.left) return;
+    if (room.voice.delete(p.id)) io.to(room.code).emit('voiceLeft', p.id);
+    p.offline = true;
+    clearTimeout(p.grace);
+    p.grace = setTimeout(() => removePlayer(room, p), GRACE_MS);
     io.to(room.code).emit('state', publicState(room));
   }
 
   socket.on('leaveRoom', leave);
-  socket.on('disconnect', leave);
+  socket.on('disconnect', dropped);
 });
 
 const PORT = process.env.PORT || 3000;

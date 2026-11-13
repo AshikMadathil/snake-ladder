@@ -10,6 +10,7 @@ import { WinnerComponent } from '../../components/winner/winner.component';
 import { medal, ordinal } from '../../util/rank';
 
 const DICE_MS = 800; // how long the dice tumbles before the number shows (same on every screen)
+const PAUSE_MS = 800; // the number stays on the dice this long before the coin starts to move
 
 @Component({
   selector: 'app-room',
@@ -74,7 +75,7 @@ export class RoomComponent implements OnDestroy {
     effect(() => {
       if (this.game.state()?.status === 'finished') {
         if (!this.resultsTimer && !this.showResults) {
-          this.resultsTimer = setTimeout(() => { this.showResults = true; this.resultsTimer = undefined; }, 3400);
+          this.resultsTimer = setTimeout(() => { this.showResults = true; this.resultsTimer = undefined; }, 4200);
         }
       } else {
         clearTimeout(this.resultsTimer);
@@ -103,9 +104,15 @@ export class RoomComponent implements OnDestroy {
     clearTimeout(this.revealTimer);
     clearTimeout(this.failTimer);
     this.revealTimer = setTimeout(() => {
-      this.revealing = false;
-      this.rolling = false;
+      this.rolling = false; // dice stopped: the number is visible, the coin waits a moment
       this.clickAt = 0;
+      this.revealTimer = setTimeout(() => this.moveCoin(r), PAUSE_MS);
+    }, wait);
+  }
+
+  private moveCoin(r: any) {
+    {
+      this.revealing = false;
       const st = this.state;
       this.view = st?.players ?? [];
       if (r.rank && st) {
@@ -114,7 +121,7 @@ export class RoomComponent implements OnDestroy {
         const delay = Math.max(600, this.readyAt - Date.now() - 300);
         setTimeout(() => { this.say(text); this.sound.win(r.playerId === this.game.myId()); }, delay);
       }
-    }, wait);
+    }
   }
 
   /** The roller is still drawn on the square they started from. */
@@ -124,6 +131,8 @@ export class RoomComponent implements OnDestroy {
   }
 
   get state() { return this.game.state(); }
+  /** Player chips follow the board: the square number changes when the coin moves, not before. */
+  get chipPlayers() { return this.view.length ? this.view : (this.state?.players ?? []); }
   get me() { return this.state?.players?.find((p: any) => p.id === this.game.myId()); }
   get activePlayer() { return this.state?.players?.[this.state.turnIndex]; }
 
@@ -180,7 +189,7 @@ export class RoomComponent implements OnDestroy {
     const r = s?.lastRoll;
     if (!r) return 'Game started. Roll a 1 or a 6 to start moving! 🍀';
     const name = s.players.find((p: any) => p.id === r.playerId)?.name ?? 'Player';
-    if (this.revealing) return `${name} is rolling… 🎲`;
+    if (this.rolling) return `${name} is rolling… 🎲`;
     let msg = `${name} rolled a ${r.roll}`;
     if (r.blocked) {
       msg += ' – needs a 1 or a 6 to start';

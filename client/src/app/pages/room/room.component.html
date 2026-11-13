@@ -21,7 +21,7 @@
           </div>
         </div>
         <div class="chips" [style.--n]="state.players.length">
-          @for (p of state.players; track p.id; let i = $index) {
+          @for (p of chipPlayers; track p.id; let i = $index) {
             <div class="chip" [class.on]="state.status === 'playing' && i === shownIndex"
                  [class.talk]="voice.speaking().has(p.id)" [class.done]="p.finished" [class.left]="(p.left && !p.finished) || p.offline">
               <div class="av" [style.background]="col(p).bg" [style.color]="col(p).fg">
