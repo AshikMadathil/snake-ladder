@@ -1,65 +1,24 @@
-<!-- <div class="overlay">
-  @for (c of confetti; track $index) {
-    <i class="confetti" [style.left.%]="c.left" [style.animation-delay.s]="c.delay" [style.background]="c.color"></i>
-  }
-  <div class="winner">
-    <div class="trophy">🏆</div>
-    <h2>{{ isMe ? 'You win!' : name + ' wins!' }}</h2>
-    <p>{{ isMe ? 'Congratulations! 🎉' : 'Better luck next time!' }}</p>
-    <button class="btn primary" (click)="home.emit()">Back to Home</button>
-  </div>
-</div> -->
 <div class="overlay">
-
-  @for (c of confetti; track $index) {
-    <i
-      class="confetti"
-      [style.left.%]="c.left"
-      [style.animation-delay.s]="c.delay"
-      [style.background]="c.color">
-    </i>
+  @if (good) {
+    @for (c of confetti; track $index) {
+      <i class="confetti" [style.left.%]="c.left" [style.animation-delay.s]="c.delay" [style.background]="c.color"></i>
+    }
   }
-
   <div class="winner">
+    <div class="trophy">{{ me?.rank === 1 ? '🏆' : (good ? '🎉' : '🎮') }}</div>
+    <h2>{{ title }}</h2>
 
-    <div class="trophy">🏆</div>
-
-    <h2>Game Finished!</h2>
-    <p>Congratulations to all the winners! 🎉</p>
-
-    <div class="ranking-list">
-
-      @for (item of rankings; track item.player.id) {
-
-        <div class="ranking-item"
-             [class.first]="item.position === 1"
-             [class.second]="item.position === 2"
-             [class.third]="item.position === 3"
-             [class.loser]="item.title === 'Loser'">
-
-          <span class="rank-emoji">{{ item.emoji }}</span>
-
-          <div class="rank-details">
-            <strong>
-              {{ item.player.id === myId ? 'You' : item.player.name }}
-            </strong>
-
-            <small>{{ item.title }}</small>
-          </div>
-
-          @if (item.player.id === myId) {
-            <span class="you-label">You</span>
-          }
-
-        </div>
-
+    <ol class="rank">
+      @for (p of standings; track p.id) {
+        <li [class.me]="p.id === myId" [class.out]="!p.rank">
+          <span class="m">{{ p.rank ? medal(p) : '✕' }}</span>
+          <b>{{ p.name }}</b>
+          @if (p.id === myId) { <small>You</small> }
+          @if (p.loser) { <em>Last</em> } @else if (!p.rank) { <em>Left</em> }
+        </li>
       }
+    </ol>
 
-    </div>
-
-    <button class="btn primary" (click)="home.emit()">
-      Back to Home
-    </button>
-
+    <button class="btn primary" (click)="home.emit()">Back to Home</button>
   </div>
 </div>

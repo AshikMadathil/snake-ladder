@@ -2,7 +2,10 @@
 
 .board-wrap { width: 100%; max-width: 640px; margin: 0 auto; padding-bottom: 9%; }
 
-.board { position: relative; width: 100%; aspect-ratio: 1; container-type: inline-size; }
+.board { position: relative; width: 100%; aspect-ratio: 1; container-type: inline-size; transition: transform 0.55s ease; }
+
+.board-wrap.zoomed { overflow: hidden; padding-bottom: 0; border-radius: 14px; }
+.zoomed .start-lane { display: none; }
 
 .grid {
   position: absolute;
@@ -12,8 +15,8 @@
   grid-template-rows: repeat(10, 1fr);
   border-radius: 14px;
   overflow: hidden;
-  border: 5px solid #7a4b1f;
-  box-shadow: 0 0 0 2px #c68b4a, 0 16px 36px rgba(0, 0, 0, 0.5);
+  border: 3px solid #7a4b1f;
+  box-shadow: 0 0 0 1px #c68b4a, 0 16px 36px rgba(0, 0, 0, 0.5);
 }
 
 .cell {
@@ -30,9 +33,9 @@
     top: 6%;
     left: 9%;
     font-size: 9px;
-    font-size: 2.3cqw;
+    font-size: 2.6cqw;
     font-weight: 600;
-    color: rgba(70, 45, 10, 0.55);
+    color: rgba(70, 45, 10, 0.6);
   }
 
   .crown { position: absolute; inset: 0; display: grid; place-items: center; font-size: 4cqw; }
@@ -60,7 +63,7 @@
 .token {
   position: absolute;
   z-index: 3;
-  width: 6.4%;
+  width: 7%;
   aspect-ratio: 1;
   transform: translate(-50%, -50%);
   border-radius: 50%;
@@ -69,10 +72,11 @@
   display: grid;
   place-items: center;
   font-size: 10px;
-  font-size: 3.3cqw;
+  font-size: 3.6cqw;
   font-weight: 700;
   transition: left 0.2s ease-out, top 0.2s ease-out;
 
+  &.left { opacity: 0.3; }
   &.slide { transition-duration: 0.8s; transition-timing-function: cubic-bezier(0.4, 0.1, 0.2, 1); }
   &.active {
     z-index: 4;

@@ -82,4 +82,6 @@ button { cursor: pointer; }
   border: 1px solid var(--card-border);
   color: #fff;
   font-size: 1.2rem;
+
+  &.on { background: var(--accent); border-color: transparent; }
 }

@@ -18,20 +18,10 @@ export class GameService {
   }
 
   createRoom(name: string) {
-    return this.request('createRoom', { name });
+    return new Promise<any>((res) => this.socket!.emit('createRoom', { name }, res));
   }
   joinRoom(code: string, name: string) {
-    return this.request('joinRoom', { code, name });
-  }
-  
-  private request(event: string, payload: any) {
-    return new Promise<any>((resolve) => {
-      if (!this.socket) { resolve({ ok: false, error: 'No connection' }); return; }
-      this.socket.timeout(15000).emit(event, payload, (err: any, res: any) => {
-        if (err) resolve({ ok: false, error: 'Cannot reach server. It may be waking up, try again in a minute.' });
-        else resolve(res);
-      });
-    });
+    return new Promise<any>((res) => this.socket!.emit('joinRoom', { code, name }, res));
   }
   start() { this.socket!.emit('startGame'); }
   roll() { this.socket!.emit('rollDice'); }

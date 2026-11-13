@@ -1,5 +1,5 @@
-<div class="board-wrap">
-  <div class="board">
+<div class="board-wrap" [class.zoomed]="zoom">
+  <div class="board" [style.transform]="camera">
     <div class="grid">
       @for (c of cells; track c.n) {
         <div class="cell" [class.alt]="c.alt" [class.up]="c.up" [class.down]="c.down" [class.goal]="c.n === 100">
@@ -36,7 +36,7 @@
     </svg>
 
     @for (t of tokens; track t.id) {
-      <div class="token" [class.active]="t.active" [class.slide]="t.slide"
+      <div class="token" [class.active]="t.active" [class.slide]="t.slide" [class.left]="t.left"
            [style.left.%]="t.x" [style.top.%]="t.y"
            [style.background]="t.bg" [style.color]="t.fg">{{ t.initial }}</div>
     }

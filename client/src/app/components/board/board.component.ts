@@ -105,6 +105,9 @@ export class BoardComponent implements OnChanges, OnDestroy {
   @Input() players: any[] = [];
   @Input() activeId = '';
   @Input() lastRoll: any = null;
+  /** Zoomed mode: the board is enlarged and the camera follows the token of focusId. */
+  @Input() zoom = false;
+  @Input() focusId = '';
 
   readonly cells = CELLS;
   readonly ladders = LADDER_SHAPES;
@@ -179,8 +182,9 @@ export class BoardComponent implements OnChanges, OnDestroy {
         x = c.x + Math.cos(a) * r;
         y = c.y + Math.sin(a) * r;
       } else {
-        x = 9 + i * 11; // waiting area under the board
-        y = 105.5;
+        // waiting area: under the board, or in the bottom-left corner when zoomed
+        x = this.zoom ? 7 + i * 7 : 9 + i * 11;
+        y = this.zoom ? 96 : 105.5;
       }
       const col = colorOf(p.color);
       return {
@@ -192,7 +196,23 @@ export class BoardComponent implements OnChanges, OnDestroy {
         initial: (p.name || '?').charAt(0).toUpperCase(),
         active: p.id === this.activeId,
         slide: this.sliding.has(p.id),
+        done: !!p.finished,
+        left: !!p.left && !p.finished,
       };
     });
+  }
+
+  /** Zoom in and keep the followed token in the middle (clamped so the board edges never show gaps). */
+  get camera(): string {
+    if (!this.zoom) return 'none';
+    const s = 1.8;
+    const t = this.tokens;
+    const f = t.find((x) => x.id === this.focusId) ?? t[0];
+    if (!f) return 'none';
+    const max = (s - 1) * 50;
+    const clamp = (v: number) => Math.max(-max, Math.min(max, v));
+    const tx = clamp(-(Math.min(f.x, 100) - 50) * s);
+    const ty = clamp(-(Math.min(f.y, 100) - 50) * s);
+    return `translate(${tx}%, ${ty}%) scale(${s})`;
   }
 }
