@@ -133,3 +133,6 @@
   .slot { grid-area: slot; }
   .dock { grid-area: dock; margin: 0; border-radius: 22px; border: 1px solid var(--card-border); }
 }
+.chip.talk .av { box-shadow: 0 0 0 3px #2ecc71; }
+.icon.mic.muted { background: #e5484d; border-color: transparent; position: relative; }
+.icon.mic.muted::after { content: ''; position: absolute; left: 8px; right: 8px; top: 50%; height: 3px; background: #fff; transform: rotate(-45deg); border-radius: 2px; }

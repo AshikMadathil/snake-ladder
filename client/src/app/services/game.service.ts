@@ -5,7 +5,7 @@ import { environment } from '../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
 export class GameService {
-  private socket?: Socket;
+  socket?: Socket;
   state = signal<any>(null);
   myId = signal<string>('');
 
@@ -18,10 +18,24 @@ export class GameService {
   }
 
   createRoom(name: string) {
-    return new Promise<any>((res) => this.socket!.emit('createRoom', { name }, res));
+    return this.request('createRoom', { name });
   }
   joinRoom(code: string, name: string) {
-    return new Promise<any>((res) => this.socket!.emit('joinRoom', { code, name }, res));
+    return this.request('joinRoom', { code, name });
+  }
+
+  private request(event: string, payload: any) {
+    return new Promise<any>((resolve) => {
+      if (!this.socket) { resolve({ ok: false, error: 'No connection' }); return; }
+      this.socket.timeout(45000).emit(event, payload, (err: any, res: any) => {
+        if (err) resolve({ ok: false, error: 'Cannot reach server. It may be waking up, try again in a minute.' });
+        else resolve(res);
+      });
+    });
+  }
+  leave() {
+    this.socket?.emit('leaveRoom');
+    this.state.set(null);
   }
   start() { this.socket!.emit('startGame'); }
   roll() { this.socket!.emit('rollDice'); }

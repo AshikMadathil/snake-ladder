@@ -1,6 +1,7 @@
-import { Component, effect } from '@angular/core';
+import { Component, OnDestroy, effect } from '@angular/core';
 import { Router } from '@angular/router';
 import { GameService } from '../../services/game.service';
+import { VoiceService } from '../../services/voice.service';
 import { SoundService } from '../../services/sound.service';
 import { BoardComponent, colorOf } from '../../components/board/board.component';
 import { DiceComponent } from '../../components/dice/dice.component';
@@ -15,13 +16,18 @@ import { medal, ordinal } from '../../util/rank';
   templateUrl: './room.component.html',
   styleUrl: './room.component.scss',
 })
-export class RoomComponent {
+export class RoomComponent implements OnDestroy {
   rolling = false;
   zoom = false;
   toast = '';
   showResults = false;
+  secondsLeft = 0;
 
   private face = 1;
+  private turnEnd = 0;
+  private lastTurnKey = '';
+  private awaiting = -1; // roll number we were at when we pressed roll
+  private clock?: ReturnType<typeof setInterval>;
   private wasMyTurn = false;
   private seenRoll = '';
   private focusOverride = '';
@@ -29,7 +35,7 @@ export class RoomComponent {
   private toastTimer?: ReturnType<typeof setTimeout>;
   private resultsTimer?: ReturnType<typeof setTimeout>;
 
-  constructor(public game: GameService, public sound: SoundService, private router: Router) {
+  constructor(public game: GameService, public sound: SoundService, public voice: VoiceService, private router: Router) {
     try { this.zoom = localStorage.getItem('sl_zoom') === '1'; } catch { /* no storage */ }
 
     // buzz the phone and chime when it becomes your turn
@@ -42,12 +48,28 @@ export class RoomComponent {
       this.wasMyTurn = mine;
     });
 
+    // turn countdown (server sends how many ms are left) and release the dice when the result arrives
+    effect(() => {
+      const s = this.game.state();
+      if (!s) return;
+      const key = `${s.turnIndex}-${s.lastRoll?.n ?? 0}-${s.status}`;
+      if (key !== this.lastTurnKey) {
+        this.lastTurnKey = key;
+        this.turnEnd = Date.now() + (s.turnLeft ?? 0);
+      }
+      if (this.rolling && (s.lastRoll?.n ?? 0) !== this.awaiting) this.rolling = false;
+    });
+    this.clock = setInterval(() => {
+      const s = this.state;
+      this.secondsLeft = s?.status === 'playing' ? Math.max(0, Math.ceil((this.turnEnd - Date.now()) / 1000)) : 0;
+    }, 250);
+
     // every new roll: dice sound for others, camera follows the mover, announce finishers
     effect(() => {
       const s = this.game.state();
       const r = s?.lastRoll;
       if (!r) { this.seenRoll = ''; return; }
-      const key = `${r.playerId}-${r.roll}-${r.from}-${r.to}`;
+      const key = `${r.n}-${r.playerId}-${r.roll}`;
       if (key === this.seenRoll) return;
       this.seenRoll = key;
 
@@ -100,16 +122,19 @@ export class RoomComponent {
   }
 
   /** Changes with every new roll, so the dice is re-created and plays its pop animation for everybody. */
-  get rollKey() { return [this.state?.lastRoll ?? 0]; }
+  get rollKey() { return [this.state?.lastRoll?.n ?? 0]; }
+  /** Random faces while rolling, then always the exact number the server rolled. */
   get diceFace(): number { return this.rolling ? this.face : (this.state?.lastRoll?.roll ?? this.face); }
 
   get banner(): string {
     if (this.state?.status !== 'playing') return 'Game over';
-    return this.isMyTurn ? '🎯 Your turn!' : `${this.activePlayer?.name ?? 'Player'}'s turn`;
+    const t = this.secondsLeft > 0 ? ` · ${this.secondsLeft}s` : '';
+    return (this.isMyTurn ? '🎯 Your turn!' : `${this.activePlayer?.name ?? 'Player'}'s turn`) + t;
   }
 
   get rollLabel(): string {
     if (this.rolling) return 'Rolling…';
+    if (this.me?.left && this.state?.status === 'playing') return 'You were removed (inactive)';
     if (this.me?.finished && this.state?.status === 'playing') return `${medal(this.me)} You finished ${ordinal(this.me.rank)} · watching`;
     if (this.isMyTurn) return 'Roll Dice 🎲';
     return `${this.activePlayer?.name ?? 'Player'} is playing…`;
@@ -132,7 +157,6 @@ export class RoomComponent {
     } else {
       msg += ` and moved to ${r.to}`;
     }
-    if (r.roll === 6 && !r.rank && s.status === 'playing') msg += ' • rolls again!';
     return msg;
   }
 
@@ -142,13 +166,17 @@ export class RoomComponent {
   roll() {
     if (!this.isMyTurn || this.rolling) return;
     this.rolling = true;
+    this.awaiting = this.state?.lastRoll?.n ?? 0;
     this.buzz(25);
     this.sound.diceRoll(800);
-    const timer = setInterval(() => (this.face = 1 + Math.floor(Math.random() * 6)), 90);
+    const timer = setInterval(() => {
+      if (!this.rolling) { clearInterval(timer); return; }
+      this.face = 1 + Math.floor(Math.random() * 6);
+    }, 90);
     setTimeout(() => {
-      clearInterval(timer);
-      this.rolling = false;
       this.game.roll();
+      // keep the dice tumbling until the server's number arrives (so the old number never flashes back)
+      setTimeout(() => { if (this.rolling) this.rolling = false; }, 6000);
     }, 800);
   }
 
@@ -167,11 +195,26 @@ export class RoomComponent {
     try { if (typeof navigator !== 'undefined') navigator.vibrate?.(ms); } catch { /* not supported */ }
   }
 
-  leaveGame() {
-    const playing = this.state?.status === 'playing' && !this.me?.finished;
-    if (playing && !confirm('Leave this game?')) return;
-    this.goHome();
+  /** Leave button, back button and swipe-back all end up here (via the route guard). */
+  canLeave(): boolean {
+    const s = this.state;
+    if (!s) return true;
+    const inGame = s.status === 'playing' && this.me && !this.me.finished && !this.me.left;
+    if (inGame && !confirm('Leave the game? You will be out of this match.')) return false;
+    this.voice.leave();
+    this.game.leave();
+    return true;
   }
 
+  leaveGame() { this.goHome(); }
+
   goHome() { this.router.navigate(['/']); }
+
+  ngOnDestroy() {
+    this.voice.leave();
+    clearInterval(this.clock);
+    clearTimeout(this.focusTimer);
+    clearTimeout(this.toastTimer);
+    clearTimeout(this.resultsTimer);
+  }
 }

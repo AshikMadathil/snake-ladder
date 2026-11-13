@@ -22,6 +22,8 @@ const JUMPS = {
 };
 const COLORS = ['red', 'blue', 'green', 'yellow'];
 const MAX_PLAYERS = 4;
+const TURN_MS = 15000;     // time limit for one turn; then the dice is rolled automatically
+const MAX_MISSED = 3;      // this many auto-rolls in a row and the player is removed as inactive
 const rooms = new Map();
 
 const makeCode = () => Math.random().toString(36).slice(2, 8).toUpperCase();
@@ -34,6 +36,7 @@ const newPlayer = (id, name, color) => ({
   finished: false, // reached square 100
   rank: null,      // 1 = first to finish ... the last player gets the final rank
   loser: false,    // the one player left when everybody else has finished
+  missed: 0,       // turns in a row that were rolled automatically
   left: false,     // disconnected during the game (stays in the list so turn order is stable)
 });
 
@@ -46,6 +49,8 @@ function publicState(room) {
     turnIndex: room.turnIndex,
     lastRoll: room.lastRoll,
     winnerId: room.winnerId,
+    turnLeft: room.deadline ? Math.max(0, room.deadline - Date.now()) : 0,
+    turnMs: TURN_MS,
   };
 }
 
@@ -55,8 +60,63 @@ function advanceTurn(room) {
   for (let i = 1; i <= n; i++) {
     const idx = (room.turnIndex + i) % n;
     const p = room.players[idx];
-    if (!p.finished && !p.left) { room.turnIndex = idx; return; }
+    if (!p.finished && !p.left) { room.turnIndex = idx; armTimer(room); return; }
   }
+}
+
+function clearTimer(room) {
+  clearTimeout(room.timer);
+  room.timer = null;
+  room.deadline = 0;
+}
+
+/** Start the countdown for the current player. When it runs out the dice is rolled for them. */
+function armTimer(room) {
+  clearTimeout(room.timer);
+  if (room.status !== 'playing') { room.deadline = 0; return; }
+  room.deadline = Date.now() + TURN_MS;
+  room.timer = setTimeout(() => {
+    if (room.status !== 'playing') return;
+    const player = room.players[room.turnIndex];
+    if (!player || player.finished || player.left) return;
+    player.missed += 1;
+    if (player.missed >= MAX_MISSED) {
+      player.left = true; // away too long: out of the game
+      if (!checkGameOver(room)) advanceTurn(room);
+      io.to(room.code).emit('state', publicState(room));
+      return;
+    }
+    doRoll(room, player);
+    io.to(room.code).emit('state', publicState(room));
+  }, TURN_MS + 300);
+}
+
+/** Roll the dice for a player: move, apply snake / ladder, rank, pass the turn (a 6 gives no extra turn). */
+function doRoll(room, player) {
+  const roll = Math.floor(Math.random() * 6) + 1;
+  const from = player.pos;
+  const to = from + roll;
+  let jump = null;
+
+  if (to <= 100) {
+    player.pos = to;
+    if (JUMPS[to]) {
+      jump = { from: to, to: JUMPS[to] };
+      player.pos = JUMPS[to];
+    }
+  } // exact roll needed to land on 100
+
+  let rank = null;
+  if (player.pos === 100) {
+    player.finished = true;
+    player.rank = ++room.finishedCount;
+    rank = player.rank;
+    if (rank === 1) room.winnerId = player.id;
+  }
+
+  room.lastRoll = { playerId: player.id, roll, from, to: player.pos, jump, rank, n: (room.rollNo = (room.rollNo || 0) + 1) };
+  if (!checkGameOver(room)) advanceTurn(room);
+  else clearTimer(room);
 }
 
 /** The game ends when at most one player is still playing. */
@@ -72,6 +132,7 @@ function checkGameOver(room) {
     else last.loser = true;                                  // the last one standing is the loser
   }
   room.status = 'finished';
+  clearTimer(room);
   return true;
 }
 
@@ -88,6 +149,7 @@ io.on('connection', (socket) => {
       lastRoll: null,
       winnerId: null,
       finishedCount: 0,
+      voice: new Set(), // socket ids that joined the voice chat
     };
     rooms.set(code, room);
     socket.join(code);
@@ -115,6 +177,7 @@ io.on('connection', (socket) => {
     if (room.hostId !== socket.id || room.players.length < 2) return;
     room.status = 'playing';
     room.turnIndex = 0;
+    armTimer(room);
     io.to(room.code).emit('state', publicState(room));
   });
 
@@ -124,40 +187,41 @@ io.on('connection', (socket) => {
     const player = room.players[room.turnIndex];
     if (!player || player.id !== socket.id || player.finished || player.left) return; // not your turn
 
-    const roll = Math.floor(Math.random() * 6) + 1;
-    const from = player.pos;
-    const to = from + roll;
-    let jump = null;
-
-    if (to <= 100) {
-      player.pos = to;
-      if (JUMPS[to]) {
-        jump = { from: to, to: JUMPS[to] };
-        player.pos = JUMPS[to];
-      }
-    } // exact roll needed to land on 100
-
-    let rank = null;
-    if (player.pos === 100) {
-      player.finished = true;
-      player.rank = ++room.finishedCount;
-      rank = player.rank;
-      if (rank === 1) room.winnerId = player.id;
-    }
-
-    room.lastRoll = { playerId: player.id, roll, from, to: player.pos, jump, rank };
-
-    if (player.finished) {
-      if (!checkGameOver(room)) advanceTurn(room); // others keep playing
-    } else if (roll !== 6) {
-      advanceTurn(room); // 6 = extra turn
-    }
+    player.missed = 0;
+    doRoll(room, player);
     io.to(room.code).emit('state', publicState(room));
   });
 
-  socket.on('disconnect', () => {
+  // ---- Voice chat: the server only relays WebRTC signalling, the audio itself flows peer-to-peer ----
+  function voiceLeave() {
+    const room = rooms.get(socket.data.code);
+    if (!room || !room.voice.delete(socket.id)) return;
+    socket.to(room.code).emit('voiceLeft', socket.id);
+  }
+
+  socket.on('voiceJoin', (_data, cb) => {
+    const room = rooms.get(socket.data.code);
+    if (!room) return cb && cb({ ok: false });
+    const peers = [...room.voice].filter((id) => id !== socket.id);
+    room.voice.add(socket.id);
+    cb && cb({ ok: true, peers }); // the newcomer calls everybody already in voice
+  });
+
+  socket.on('voiceLeave', voiceLeave);
+
+  socket.on('voiceSignal', ({ to, data } = {}) => {
+    const room = rooms.get(socket.data.code);
+    if (!room || !room.voice.has(socket.id) || !room.voice.has(to)) return;
+    io.to(to).emit('voiceSignal', { from: socket.id, data });
+  });
+
+  // Called when a player taps "leave" (or closes the tab): remove them from the room.
+  function leave() {
+    voiceLeave();
     const room = rooms.get(socket.data.code);
     if (!room) return;
+    socket.leave(room.code);
+    socket.data.code = null;
     const idx = room.players.findIndex((p) => p.id === socket.id);
     if (idx === -1) return;
 
@@ -168,7 +232,7 @@ io.on('connection', (socket) => {
     }
 
     const connected = room.players.filter((p) => !p.left);
-    if (connected.length === 0) { rooms.delete(room.code); return; }
+    if (connected.length === 0) { clearTimer(room); rooms.delete(room.code); return; }
     if (room.hostId === socket.id) room.hostId = connected[0].id;
 
     if (room.status === 'playing') {
@@ -176,7 +240,10 @@ io.on('connection', (socket) => {
     }
     if (room.turnIndex >= room.players.length) room.turnIndex = 0;
     io.to(room.code).emit('state', publicState(room));
-  });
+  }
+
+  socket.on('leaveRoom', leave);
+  socket.on('disconnect', leave);
 });
 
 const PORT = process.env.PORT || 3000;

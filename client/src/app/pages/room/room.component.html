@@ -7,6 +7,13 @@
         <div class="bar">
           <button class="icon" (click)="leaveGame()" aria-label="Leave game">←</button>
           <div class="right">
+            <button class="icon" [class.on]="voice.joined()" [disabled]="voice.connecting()"
+                    (click)="voice.joined() ? voice.leave() : voice.join()"
+                    [attr.aria-label]="voice.joined() ? 'Leave voice chat' : 'Join voice chat'">🎧</button>
+            @if (voice.joined()) {
+              <button class="icon mic" [class.muted]="voice.muted()" (click)="voice.toggleMute()"
+                      [attr.aria-label]="voice.muted() ? 'Unmute microphone' : 'Mute microphone'">🎤</button>
+            }
             <button class="icon" [class.on]="zoom" (click)="toggleZoom()" aria-label="Zoom the board">🔍</button>
             <button class="icon" (click)="sound.toggle()" [attr.aria-label]="sound.muted ? 'Unmute sound' : 'Mute sound'">
               {{ sound.muted ? '🔇' : '🔊' }}
@@ -17,7 +24,7 @@
         <div class="chips" [style.--n]="state.players.length">
           @for (p of state.players; track p.id; let i = $index) {
             <div class="chip" [class.on]="state.status === 'playing' && i === state.turnIndex"
-                 [class.done]="p.finished" [class.left]="p.left && !p.finished">
+                 [class.talk]="voice.speaking().has(p.id)" [class.done]="p.finished" [class.left]="p.left && !p.finished">
               <div class="av" [style.background]="col(p).bg" [style.color]="col(p).fg">
                 {{ p.name.charAt(0).toUpperCase() }}<em>{{ badge(p) }}</em>
               </div>
@@ -46,6 +53,8 @@
         </div>
       </footer>
     </div>
+
+    @if (voice.error()) { <div class="toast">{{ voice.error() }}</div> }
 
     @if (toast) {
       @for (t of [toast]; track t) {
